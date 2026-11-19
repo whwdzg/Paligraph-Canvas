@@ -646,7 +646,7 @@ export default function App() {
         )}
       </main>
 
-      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} onToast={showToast} />
+      <SettingsDialog open={settingsOpen} notes={store.notes} onClose={() => setSettingsOpen(false)} onToast={showToast} />
       <Suspense fallback={null}>
         {importOpen ? (
           <ImportDialog

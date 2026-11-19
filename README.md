@@ -3,7 +3,7 @@
 **灵感，落于笔尖。** A local-first notebook for ink, Markdown and the ideas in between.
 
 [![Deploy to GitHub Pages](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml/badge.svg)](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml)
-![Version](https://img.shields.io/badge/version-1.2.0-2b7fff)
+![Version](https://img.shields.io/badge/version-1.3.0-2b7fff)
 ![License](https://img.shields.io/badge/license-GPL--3.0--or--later-4c1)
 
 Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布、一套接近 Apple Notes 的悬浮工具栏、Fluent Design Sun Valley 的材质，以及可选的液态玻璃（liquid glass）质感。它把笔迹数据和 Markdown 都留在这台设备上，并可以在需要时导出为 PDF 或 Markdown。
@@ -96,6 +96,15 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 - 笔记与笔迹保存在 IndexedDB；设置、语言偏好保存在 localStorage。
 - 设置 JSON 不包含笔记内容（这是有意设计，避免把大量笔迹塞进偏好文件）。
 
+### 存储占用
+
+- 打开 **设置 → 数据与备份**，可以查看浏览器已用空间、配额与持久化状态。
+- 按笔记数据拆分显示笔迹、画布图片、Markdown 文本/附件、笔记预览图、设置与语言包占用。
+- 支持手动刷新；统计不离开浏览器。
+- 笔记体积按序列化字段估算；浏览器统计包含应用缓存等其他同源数据，所以可能略大于笔记明细。
+
+![设置中的存储占用](docs/settings-storage.png)
+
 ---
 
 ## 快速开始
@@ -106,7 +115,7 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 npm install
 npm run dev        # http://localhost:4173
 npm run typecheck  # TypeScript
-npm test           # Vitest · 50 tests
+npm test           # Vitest · 52 tests
 npm run build      # 生产构建到 dist/
 npm run preview    # 预览构建，端口 4173
 ```
@@ -257,7 +266,7 @@ $env:GITHUB_ACTIONS='true'; npm run build
 ### 性能策略
 
 - 首屏只加载 React、Canvas UI 与应用状态；Markdown 渲染器、Obsidian 扫描器、jsPDF 都是按需 chunk。
-- 当前构建首屏 JS gzip 约 **118 KB**，CSS gzip 约 **14 KB**，语言包约 **5 KB**；手写数学识别器、Markdown 渲染器、SVG/PNG 编码与导出模块（jsPDF 约 121 KB gzip）都在需要时才下载。
+- 当前构建首屏 JS gzip 约 **120 KB**，CSS gzip 约 **14 KB**，语言包约 **5 KB**；手写数学识别器、Markdown 渲染器、SVG/PNG 编码与导出模块（jsPDF 约 121 KB gzip）都在需要时才下载。
 - 画布图片使用解码缓存（最多 24 张），离屏/缩略图导出按需解码；插入时大图会先缩小，避免把原始相机照片长期留在内存。
 - 所有 Canvas 层按 `devicePixelRatio` 渲染，但根据视口面积与设备内存限制像素预算；大屏不会直接使用 2× 全屏位图，避免四层画布把内存放大到不可控。
 - 只绘制视口内的笔画；输入点会做最小距离过滤、结束时 RDP 简化，避免存储冗余点。
@@ -300,6 +309,7 @@ Paligraph-Canvas/
 │  │  ├─ math/recognizer.ts        本地手写数字/符号识别
 │  │  ├─ media.ts                  画布图片、SVG/位图导入与解码缓存
 │  │  ├─ editable.ts               `.paligraph` 无损可编辑格式
+│  │  ├─ storageUsage.ts           存储占用估算与分类
 │  │  ├─ shapes.ts                 基本图形识别与吸附
 │  │  └─ thumbnail.ts              Markdown/笔迹/图片内容预览图
 │  ├─ state/                      Zustand 设置 store
@@ -318,7 +328,7 @@ npm test
 npm run build
 ```
 
-当前验证结果：**50 个单元测试通过**，TypeScript 严格模式无错误，生产构建成功。
+当前验证结果：**52 个单元测试通过**，TypeScript 严格模式无错误，生产构建成功。
 
 浏览器 QA 需要先运行 `npm run preview`，并使用本地 Edge/Chrome：
 
@@ -329,6 +339,7 @@ npm run qa:touch        # CDP 双指长按平移、捏合缩放、快速误触
 npm run qa:features     # 荧光笔直线、橡皮、复制粘贴、设置 JSON、语言
 npm run qa:shapes-math  # 图形吸附、手写数学与竖式
 npm run qa:previews     # Markdown / Obsidian 内容预览图
+npm run qa:storage      # 设置中的存储占用读数和明细
 npm run qa:images       # 插入图片、选中、旋转、复制、删除、撤销
 npm run qa:export       # PNG / SVG / .paligraph 导出与再导入
 node scripts/qa-assets.mjs  # Obsidian 附件导入与图片 lightbox
@@ -353,6 +364,7 @@ node scripts/qa-pdf.mjs     # 中文 PDF 导出
 - PNG/SVG 导出的是**画布内容**（背景、图片、笔迹）；Markdown 阅读卡片的正文排版请使用 PDF 或 Markdown 导出，避免把 HTML 文本硬塞进 SVG。
 - SVG 是干净的矢量近似：铅笔/蜡笔的颗粒纹理、毛笔的复杂压力轮廓不会一比一保留；像素橡皮会以 mask 表达。需要完全一致的像素效果请导出 PNG。
 - 画布图片以 data URL 存储，单篇图片过多或过大仍会占用浏览器配额；插入时会限张数并压缩位图。动画 GIF 只保留第一帧。
+- 设置里的存储明细是估算值，不能替代浏览器 DevTools 的精确配额报告；清理站点数据会连同所有笔记一起删除。
 - 应用清单已包含 manifest 与安装图标，但未注册 Service Worker，因此不承诺完整离线启动。
 
 ---

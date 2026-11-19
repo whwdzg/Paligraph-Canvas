@@ -2,6 +2,22 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.3.0] — 2026-11-20
+
+### Storage usage
+
+- **Settings → Data & backup** now reports browser storage used, quota and the persisted/best-effort state.
+- Gives a note-data breakdown for ink strokes, canvas images, Markdown text, Markdown attachments, note previews, settings and language packs.
+- Shows note and canvas-image counts and supports a manual refresh.
+- Handles browsers without the Storage API, private-mode failures and unavailable quota information gracefully.
+- Uses a pure, unit-tested note-size estimator; browser totals remain an estimate including caches.
+
+### Internal
+
+- Added `storageUsage.ts` and byte formatting in `format.ts`.
+- Added 2 unit tests (52 total).
+- Bumped package/app version to 1.3.0.
+
 ## [1.2.0] — 2026-11-20
 
 ### Canvas images

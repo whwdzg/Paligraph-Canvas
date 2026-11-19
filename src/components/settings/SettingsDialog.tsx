@@ -1,5 +1,6 @@
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ArrowClockwise24Regular,
   ArrowDownload24Regular,
   ArrowUpload24Regular,
   CheckmarkCircle24Regular,
@@ -9,6 +10,7 @@ import {
   Database24Regular,
   Desktop24Regular,
   Globe24Regular,
+  HardDrive24Regular,
   Info24Regular,
   LocalLanguage24Regular,
   PaintBrush24Regular,
@@ -26,8 +28,10 @@ import {
 } from '../../lib/settingsJson';
 import { parseLanguagePackJson } from '../../lib/languagePacks';
 import { downloadBlob, safeFilename } from '../../lib/download';
+import { formatBytes, formatPercent } from '../../lib/format';
+import { measureStorageUsage, storagePercent, type StorageUsage } from '../../lib/storageUsage';
 import { useSettingsStore } from '../../state/settings';
-import type { ThemeChoice } from '../../lib/types';
+import type { Note, ThemeChoice } from '../../lib/types';
 import { Modal } from '../common/Modal';
 import { Switch } from '../common/Switch';
 import { Segmented } from '../common/Segmented';
@@ -38,6 +42,7 @@ type SettingsTab = 'appearance' | 'canvas' | 'language' | 'data' | 'about';
 
 interface SettingsDialogProps {
   open: boolean;
+  notes: Note[];
   onClose: () => void;
   onToast: (message: string, tone?: 'neutral' | 'success' | 'error') => void;
 }
@@ -79,7 +84,7 @@ function SectionHeading({ title, description }: { title: string; description?: s
   );
 }
 
-export function SettingsDialog({ open, onClose, onToast }: SettingsDialogProps) {
+export function SettingsDialog({ open, notes, onClose, onToast }: SettingsDialogProps) {
   const { t, languages, preference, setLanguage, importLanguagePack } = useI18n();
   const settings = useSettingsStore();
   const { patch, replaceSettings, resetSettings } = settings;
@@ -88,10 +93,35 @@ export function SettingsDialog({ open, onClose, onToast }: SettingsDialogProps) 
   const [languageError, setLanguageError] = useState('');
   const [copied, setCopied] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [storageUsage, setStorageUsage] = useState<StorageUsage | null>(null);
+  const [storageError, setStorageError] = useState('');
+  const [storageLoading, setStorageLoading] = useState(false);
   const settingsInputRef = useRef<HTMLInputElement>(null);
   const languageInputRef = useRef<HTMLInputElement>(null);
 
   const settingsJson = useMemo(() => serializeSettings(settings), [settings]);
+
+  const refreshStorage = useCallback(async (): Promise<void> => {
+    setStorageLoading(true);
+    setStorageError('');
+    try {
+      setStorageUsage(await measureStorageUsage(notes));
+    } catch (reason) {
+      setStorageError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setStorageLoading(false);
+    }
+  }, [notes]);
+
+  useEffect(() => {
+    if (open && tab === 'data') void refreshStorage();
+  }, [open, refreshStorage, tab]);
+
+  const storageUsed = storageUsage ? storageUsage.browserUsage ?? storageUsage.totalBytes : 0;
+  const storageQuota = storageUsage?.browserQuota ?? 0;
+  const storageRatio = storageUsage ? storagePercent(storageUsage) : 0;
+  const storagePercentLabel = storageRatio > 0 && storageRatio < 0.01 ? '<1%' : formatPercent(storageRatio);
+  const storageAriaValue = storageRatio > 0 ? Math.max(1, Math.round(storageRatio * 100)) : 0;
 
   const copySettings = async (): Promise<void> => {
     try {
@@ -320,6 +350,97 @@ export function SettingsDialog({ open, onClose, onToast }: SettingsDialogProps) 
 
           {tab === 'data' ? (
             <>
+              <SectionHeading title={t('storage.title')} description={t('storage.description')} />
+              <div className="settings-card storage-card">
+                <div className="storage-summary">
+                  <div className="storage-summary-head">
+                    <span className="storage-icon"><HardDrive24Regular /></span>
+                    <div className="storage-summary-copy">
+                      <span>{t('storage.browser')}</span>
+                      <strong>{storageUsage ? formatBytes(storageUsed) : '—'}</strong>
+                      <small>
+                        {storageUsage
+                          ? t('storage.notesMeta', {
+                              notes: storageUsage.noteCount,
+                              images: storageUsage.imageCount,
+                            })
+                          : t('storage.loading')}
+                      </small>
+                    </div>
+                    <button
+                      type="button"
+                      className={`icon-button storage-refresh ${storageLoading ? 'is-spinning' : ''}`.trim()}
+                      onClick={() => void refreshStorage()}
+                      disabled={storageLoading}
+                      aria-label={t('storage.refresh')}
+                      title={t('storage.refresh')}
+                    >
+                      <ArrowClockwise24Regular />
+                    </button>
+                  </div>
+                  <div
+                    className="storage-meter"
+                    role="progressbar"
+                    aria-label={t('storage.browser')}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={storageAriaValue}
+                  >
+                    <span style={{ width: `${storageRatio > 0 ? Math.max(2, storageRatio * 100) : 0}%` }} />
+                  </div>
+                  <div className="storage-meter-meta">
+                    <span>
+                      {storageQuota
+                        ? t('storage.ofQuota', { percent: storagePercentLabel, quota: formatBytes(storageQuota) })
+                        : t('storage.quotaUnknown')}
+                    </span>
+                    <span>
+                      {storageUsage?.persisted === true
+                        ? t('storage.persistent')
+                        : storageUsage?.persisted === false
+                          ? t('storage.bestEffort')
+                          : ''}
+                    </span>
+                  </div>
+                </div>
+                <div className="storage-breakdown">
+                  <div className="storage-row">
+                    <span>{t('storage.notesTotal')}</span>
+                    <strong>{storageUsage ? formatBytes(storageUsage.notesBytes) : '—'}</strong>
+                  </div>
+                  <div className="storage-row">
+                    <span>{t('storage.strokes')}</span>
+                    <strong>{storageUsage ? formatBytes(storageUsage.strokeBytes) : '—'}</strong>
+                  </div>
+                  <div className="storage-row">
+                    <span>{t('storage.images')}</span>
+                    <strong>{storageUsage ? formatBytes(storageUsage.imageBytes) : '—'}</strong>
+                  </div>
+                  <div className="storage-row">
+                    <span>{t('storage.markdown')}</span>
+                    <strong>{storageUsage ? formatBytes(storageUsage.markdownBytes) : '—'}</strong>
+                  </div>
+                  <div className="storage-row">
+                    <span>{t('storage.attachments')}</span>
+                    <strong>{storageUsage ? formatBytes(storageUsage.attachmentBytes) : '—'}</strong>
+                  </div>
+                  <div className="storage-row">
+                    <span>{t('storage.thumbnails')}</span>
+                    <strong>{storageUsage ? formatBytes(storageUsage.thumbnailBytes) : '—'}</strong>
+                  </div>
+                  <div className="storage-row">
+                    <span>{t('storage.settings')}</span>
+                    <strong>{storageUsage ? formatBytes(storageUsage.settingsBytes) : '—'}</strong>
+                  </div>
+                  <div className="storage-row">
+                    <span>{t('storage.languages')}</span>
+                    <strong>{storageUsage ? formatBytes(storageUsage.languageBytes) : '—'}</strong>
+                  </div>
+                </div>
+              </div>
+              {storageError ? <p className="settings-error" role="alert">{storageError}</p> : null}
+              <p className="settings-note">{t('storage.estimateNote')}</p>
+
               <SectionHeading title={t('data.title')} description={t('data.description')} />
               <div className="settings-card">
                 <SettingRow title={t('data.settingsJson')} description={t('data.settingsJsonHint', { version: SETTINGS_JSON_VERSION })}>
