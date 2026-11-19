@@ -3,7 +3,7 @@
 **灵感，落于笔尖。** A local-first notebook for ink, Markdown and the ideas in between.
 
 [![Deploy to GitHub Pages](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml/badge.svg)](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml)
-![Version](https://img.shields.io/badge/version-1.4.0-2b7fff)
+![Version](https://img.shields.io/badge/version-1.5.0-2b7fff)
 ![License](https://img.shields.io/badge/license-GPL--3.0--or--later-4c1)
 
 Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布、一套接近 Apple Notes 的悬浮工具栏、Fluent Design Sun Valley 的材质，以及可选的液态玻璃（liquid glass）质感。它把笔迹数据和 Markdown 都留在这台设备上，并可以在需要时导出为 PDF 或 Markdown。
@@ -21,6 +21,7 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 | ![画完后按住识别矩形](docs/shape-recognition.png) | ![长按笔迹求解](docs/handwriting-math.png) |
 | ![画布图片与选区](docs/canvas-images.png) | ![PNG/SVG/可编辑笔记导出](docs/export-menu.png) |
 | ![Obsidian 层级文件夹](docs/folders.png) | ![Markdown LaTeX 渲染](docs/latex.png) |
+| ![侧栏 PWA 安装提示](docs/pwa.png) | ![设置中的安装引导](docs/pwa-settings.png) |
 
 <p align="center">
   <img src="docs/mobile.png" alt="Paligraph Canvas 移动端" width="280" />
@@ -100,6 +101,15 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 - 减少动态效果、画布提示、压感灵敏度、防误触、图形纠正与手写数学均可配置。
 - 所有 UI 图标来自 [Microsoft Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons)（MIT）。
 
+### PWA 安装
+
+- 支持安装为独立窗口应用（Chrome/Edge 桌面与 Android），并支持 iOS Safari 添加到主屏幕。
+- Chrome/Edge 检测到可安装时会捕获浏览器安装提示，并在侧栏显示低调的安装引导；也可以从 **设置 → 关于** 随时查看安装状态和步骤。
+- 安装后使用独立窗口与图标启动，IndexedDB 笔记与浏览器版本互通。
+- Service Worker 会预缓存应用外壳、所有按需模块、语言包、图标和 KaTeX 字体；安装后即使断网也能重新打开应用和已有笔记。
+- 使用 `autoUpdate` 策略，新版本发布后下一次打开会更新缓存；首次安装缓存约 2.3 MB。
+- 如果浏览器不支持自动安装，设置页会显示对应浏览器的手动安装步骤。
+
 ### 多语言与数据
 
 - 内置简体中文、繁體中文、English、日本語；默认跟随浏览器语言。
@@ -140,8 +150,9 @@ npm run preview    # 预览构建，端口 4173
 
 1. push 到 `main`（或在 Actions 页手动运行 `workflow_dispatch`）。
 2. 工作流依次执行 `npm ci` → `typecheck` → `test` → `build`。
-3. 构建时注入 `GITHUB_ACTIONS=true`，Vite 自动把 base path 切换为 `/Paligraph-Canvas/`，HTML、图标、manifest、语言文件全部适配项目页子路径。
-4. 通过 `actions/configure-pages`（带 `enablement: true`）、`upload-pages-artifact` 和 `deploy-pages` 发布。
+3. 构建时注入 `GITHUB_ACTIONS=true`，Vite 自动把 base path 切换为 `/Paligraph-Canvas/`，HTML、图标、manifest、语言文件和 Service Worker scope 全部适配项目页子路径。
+4. `vite-plugin-pwa` 生成 `sw.js` 与 Workbox 预缓存清单；首次访问后即可离线打开。
+5. 通过 `actions/configure-pages`（带 `enablement: true`）、`upload-pages-artifact` 和 `deploy-pages` 发布。
 
 首次进入仓库时，请在 **Settings → Pages → Build and deployment** 将 Source 设为 **GitHub Actions**。工作流里的 `enablement: true` 也会尝试在全新仓库上自动启用 Pages。
 
@@ -281,7 +292,8 @@ $env:GITHUB_ACTIONS='true'; npm run build
 ### 性能策略
 
 - 首屏只加载 React、Canvas UI 与应用状态；Markdown 渲染器、Obsidian 扫描器、jsPDF 都是按需 chunk。
-- 当前构建首屏 JS gzip 约 **126 KB**，CSS gzip 约 **15 KB**，语言包约 **5 KB**；手写数学识别器、Markdown + KaTeX 渲染器（约 100 KB gzip，KaTeX CSS 约 8 KB gzip）、SVG/PNG 编码与导出模块（jsPDF 约 121 KB gzip）都在需要时才下载。
+- 当前构建首屏 JS gzip 约 **127 KB**，CSS gzip 约 **15 KB**，语言包约 **5 KB**；手写数学识别器、Markdown + KaTeX 渲染器（约 100 KB gzip，KaTeX CSS 约 8 KB gzip）、SVG/PNG 编码与导出模块（jsPDF 约 121 KB gzip）都在需要时才下载。
+- PWA 首次安装的 Workbox 预缓存约 **2.3 MB**，包含所有按需模块、字体与语言包；之后由 `autoUpdate` 在后台更新。
 - 画布图片使用解码缓存（最多 24 张），离屏/缩略图导出按需解码；插入时大图会先缩小，避免把原始相机照片长期留在内存。
 - 所有 Canvas 层按 `devicePixelRatio` 渲染，但根据视口面积与设备内存限制像素预算；大屏不会直接使用 2× 全屏位图，避免四层画布把内存放大到不可控。
 - 只绘制视口内的笔画；输入点会做最小距离过滤、结束时 RDP 简化，避免存储冗余点。
@@ -314,10 +326,11 @@ Paligraph-Canvas/
 │  │  ├─ canvas/DrawingSurface.tsx Canvas 交互与渲染调度
 │  │  ├─ editor/                  工具栏、选项、导入、Markdown 源码
 │  │  ├─ settings/                设置对话框
-│  │  ├─ sidebar/                 笔记库
+│  │  ├─ sidebar/                 笔记库、文件夹、多选
+│  │  ├─ pwa/                     PWA 安装提示与引导卡片
 │  │  └─ common/                  Modal、Switch、Slider 等
 │  ├─ config/                     默认设置与色板
-│  ├─ hooks/                      笔记持久化、主题、提示
+│  ├─ hooks/                      笔记持久化、PWA 安装、主题、提示
 │  ├─ i18n/                       运行时 i18n
 │  ├─ lib/                        几何、笔迹、渲染、存储、导出
 │  │  ├─ math/solver.ts            一元一次方程与四则运算
@@ -331,7 +344,7 @@ Paligraph-Canvas/
 │  ├─ state/                      Zustand 设置 store
 │  └─ styles/                     design tokens 与响应式样式
 ├─ index.html                     首屏主题/locale 预取 + 静态度量
-└─ vite.config.ts                 base path、手动拆包、测试
+└─ vite.config.ts                 base path、手动拆包、PWA/Service Worker、测试
 ```
 
 ---
@@ -358,6 +371,7 @@ npm run qa:previews     # Markdown / Obsidian 内容预览图
 npm run qa:storage      # 设置中的存储占用读数和明细
 npm run qa:folders      # 文件夹、多选移动/删除、笔记菜单导出
 npm run qa:latex        # Markdown/Obsidian LaTeX 渲染
+npm run qa:pwa          # 安装提示、Service Worker、离线启动
 npm run qa:images       # 插入图片、选中、旋转、复制、删除、撤销
 npm run qa:export       # PNG / SVG / .paligraph 导出与再导入
 node scripts/qa-assets.mjs  # Obsidian 附件导入与图片 lightbox
@@ -385,7 +399,8 @@ node scripts/qa-pdf.mjs     # 中文 PDF 导出
 - SVG 是干净的矢量近似：铅笔/蜡笔的颗粒纹理、毛笔的复杂压力轮廓不会一比一保留；像素橡皮会以 mask 表达。需要完全一致的像素效果请导出 PNG。
 - 画布图片以 data URL 存储，单篇图片过多或过大仍会占用浏览器配额；插入时会限张数并压缩位图。动画 GIF 只保留第一帧。
 - 设置里的存储明细是估算值，不能替代浏览器 DevTools 的精确配额报告；清理站点数据会连同所有笔记一起删除。
-- 应用清单已包含 manifest 与安装图标，但未注册 Service Worker，因此不承诺完整离线启动。
+- PWA 离线缓存与应用更新依赖 Service Worker；首次访问或清理站点数据后需要联网重新加载一次。安装引导只在支持安装的浏览器/设备上显示。
+- 当前 PWA 使用自动更新，没有“立即更新”提示；若需要强制获取最新版本，可关闭页面后重新打开或清除站点缓存。
 
 ---
 

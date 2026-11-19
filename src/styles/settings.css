@@ -708,3 +708,113 @@
     margin-top: 18px;
   }
 }
+
+/* ------------------------------------------------------------------ install */
+.pwa-settings-card {
+  width: min(430px, 100%);
+  margin-top: 18px;
+  padding: 13px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  text-align: left;
+}
+
+.pwa-settings-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pwa-settings-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  overflow: hidden;
+  border-radius: 9px;
+  background: var(--surface-2);
+}
+
+.pwa-settings-icon img {
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+}
+
+.pwa-settings-copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pwa-settings-copy strong {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pwa-settings-copy span {
+  color: var(--text-3);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.pwa-settings-head > .fluent-button {
+  min-height: 30px;
+  padding: 4px 10px;
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.pwa-installed-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  color: var(--success);
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+  font-size: 9.5px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.pwa-installed-chip svg {
+  width: 13px;
+  height: 13px;
+}
+
+.pwa-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.pwa-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  color: var(--text-2);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.pwa-step b {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  color: var(--accent);
+  background: var(--accent-soft);
+  font-size: 8.5px;
+  font-weight: 750;
+}

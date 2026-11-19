@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { VitePWA } from 'vite-plugin-pwa';
 
 /**
  * Paligraph build configuration.
@@ -18,7 +19,25 @@ const repositoryBase = '/Paligraph-Canvas/';
 
 export default defineConfig({
   base: process.env.GITHUB_ACTIONS ? repositoryBase : '/',
-  plugins: [react()],
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      injectRegister: 'auto',
+      // Keep the hand-authored manifest in public/ so the existing icon,
+      // shortcut and display configuration stays under direct control.
+      manifest: false,
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,json,woff2}'],
+        navigateFallback: 'index.html',
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+      },
+      devOptions: { enabled: false },
+    }),
+  ],
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version ?? '0.0.0'),
     __BUILD_TIME__: JSON.stringify(new Date().toISOString()),

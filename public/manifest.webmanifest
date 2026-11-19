@@ -1,16 +1,22 @@
 {
   "name": "Paligraph Canvas",
   "short_name": "Paligraph",
-  "description": "A local-first Fluent Design notebook for ink, markdown and Obsidian vaults.",
+  "description": "A local-first Fluent Design notebook for ink, Markdown, Obsidian vaults and canvas images.",
   "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "display_override": ["window-controls-overlay", "standalone", "browser"],
+  "display_override": ["standalone", "minimal-ui", "browser"],
   "orientation": "any",
   "background_color": "#0b111a",
   "theme_color": "#0b111a",
   "categories": ["productivity", "graphics", "utilities"],
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "launch_handler": {
+    "client_mode": ["focus-existing", "auto"]
+  },
   "icons": [
     {
       "src": "icons/icon-192.png",
@@ -35,6 +41,7 @@
     {
       "name": "New note",
       "short_name": "New",
+      "description": "Create a blank Paligraph note",
       "url": "./?new=1",
       "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
     }

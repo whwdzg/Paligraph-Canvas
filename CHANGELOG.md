@@ -2,6 +2,28 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.5.0] — 2026-11-20
+
+### Installable PWA
+
+- Added a Vite PWA/Workbox build: generated `sw.js`, precache manifest, automatic registration and offline app-shell support.
+- Precache includes all JS/CSS chunks, locales, icons, KaTeX fonts and the manifest (~2.3 MB on first install).
+- Added a shared install controller for Chrome/Edge `beforeinstallprompt`, iOS Home Screen detection and installed/standalone state.
+- Sidebar shows a dismissible install prompt when installation is available; Settings → About shows install status plus iOS/desktop instructions.
+- Install prompt can be opened directly from the sidebar guide; installed state hides the prompt.
+- `autoUpdate` keeps the offline cache current after deployment.
+
+### Manifest
+
+- Added a stable PWA `id`, standalone display override, launch handler, language/direction metadata and existing shortcuts/icons.
+- Service Worker base/scope adapts to `/Paligraph-Canvas/` on GitHub Pages and `/` locally.
+
+### Internal
+
+- Added `usePwaInstall`, PWA prompt/card components and `vite-plugin-pwa`.
+- Added `qa:pwa` browser QA for service worker control, manifest, simulated install choice and offline reload.
+- Bumped package/app version to 1.5.0.
+
 ## [1.4.0] — 2026-11-20
 
 ### Note library: folders and multi-select

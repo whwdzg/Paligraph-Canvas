@@ -37,12 +37,17 @@ import { Switch } from '../common/Switch';
 import { Segmented } from '../common/Segmented';
 import { Slider } from '../common/Slider';
 import { BackgroundControls } from '../editor/BackgroundControls';
+import { PwaInstallCard } from '../pwa/PwaInstallCard';
+import type { PwaInstallController } from '../../hooks/usePwaInstall';
 
-type SettingsTab = 'appearance' | 'canvas' | 'language' | 'data' | 'about';
+export type SettingsTab = 'appearance' | 'canvas' | 'language' | 'data' | 'about';
 
 interface SettingsDialogProps {
   open: boolean;
   notes: Note[];
+  initialTab?: SettingsTab;
+  pwa: PwaInstallController;
+  onInstallPwa: () => void;
   onClose: () => void;
   onToast: (message: string, tone?: 'neutral' | 'success' | 'error') => void;
 }
@@ -84,7 +89,15 @@ function SectionHeading({ title, description }: { title: string; description?: s
   );
 }
 
-export function SettingsDialog({ open, notes, onClose, onToast }: SettingsDialogProps) {
+export function SettingsDialog({
+  open,
+  notes,
+  initialTab = 'appearance',
+  pwa,
+  onInstallPwa,
+  onClose,
+  onToast,
+}: SettingsDialogProps) {
   const { t, languages, preference, setLanguage, importLanguagePack } = useI18n();
   const settings = useSettingsStore();
   const { patch, replaceSettings, resetSettings } = settings;
@@ -112,6 +125,10 @@ export function SettingsDialog({ open, notes, onClose, onToast }: SettingsDialog
       setStorageLoading(false);
     }
   }, [notes]);
+
+  useEffect(() => {
+    if (open) setTab(initialTab);
+  }, [initialTab, open]);
 
   useEffect(() => {
     if (open && tab === 'data') void refreshStorage();
@@ -498,6 +515,7 @@ export function SettingsDialog({ open, notes, onClose, onToast }: SettingsDialog
               <h3>Paligraph Canvas</h3>
               <p className="about-version">v{APP_VERSION} · Fluent Design · GNU GPL-3.0</p>
               <p className="about-copy">{t('about.description')}</p>
+              <PwaInstallCard pwa={pwa} onInstall={onInstallPwa} />
               <div className="about-links">
                 <a className="fluent-button" href="https://github.com/whwdzg/Paligraph-Canvas" target="_blank" rel="noreferrer">
                   <Code24Regular />

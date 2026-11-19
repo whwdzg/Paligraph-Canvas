@@ -23,6 +23,8 @@ import {
   ShieldCheckmark24Regular,
 } from '@fluentui/react-icons';
 import { useI18n } from '../../i18n/I18nProvider';
+import { PwaInstallPrompt } from '../pwa/PwaInstallPrompt';
+import type { PwaInstallController } from '../../hooks/usePwaInstall';
 import { buildFolderTree, folderPathName, type FolderNode } from '../../lib/folders';
 import { formatNoteTime, truncate } from '../../lib/format';
 import type { FolderFilter, Note, NoteExportFormat, NoteFolder } from '../../lib/types';
@@ -65,6 +67,11 @@ interface NoteSidebarProps {
   onSelectAll: (ids: string[]) => void;
   onDeleteSelected: () => void;
   onMoveSelected: () => void;
+  pwa: PwaInstallController;
+  installPromptDismissed: boolean;
+  onInstallPwa: () => void;
+  onOpenInstallGuide: () => void;
+  onDismissInstallPrompt: () => void;
 }
 
 function NoteThumb({ note }: { note: Note }) {
@@ -107,6 +114,11 @@ export function NoteSidebar({
   onSelectAll,
   onDeleteSelected,
   onMoveSelected,
+  pwa,
+  installPromptDismissed,
+  onInstallPwa,
+  onOpenInstallGuide,
+  onDismissInstallPrompt,
 }: NoteSidebarProps) {
   const { t, language } = useI18n();
   const [query, setQuery] = useState('');
@@ -472,6 +484,15 @@ export function NoteSidebar({
             </div>
           ) : null}
         </div>
+
+        {!pwa.installed && !installPromptDismissed && (pwa.canInstall || pwa.isIos) ? (
+          <PwaInstallPrompt
+            pwa={pwa}
+            onInstall={onInstallPwa}
+            onGuide={onOpenInstallGuide}
+            onDismiss={onDismissInstallPrompt}
+          />
+        ) : null}
 
         <footer className="sidebar-footer">
           <ShieldCheckmark24Regular />

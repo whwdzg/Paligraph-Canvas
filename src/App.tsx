@@ -17,11 +17,12 @@ import { ImagePreviewDialog } from './components/editor/ImagePreviewDialog';
 import { NoteSidebar } from './components/sidebar/NoteSidebar';
 import { FolderNameDialog } from './components/sidebar/FolderNameDialog';
 import { MoveToFolderDialog } from './components/sidebar/MoveToFolderDialog';
-import { SettingsDialog } from './components/settings/SettingsDialog';
+import { SettingsDialog, type SettingsTab } from './components/settings/SettingsDialog';
 import { ConfirmDialog } from './components/common/ConfirmDialog';
 import { ToastHost } from './components/common/ToastHost';
 import { useI18n } from './i18n/I18nProvider';
 import { useNotes } from './hooks/useNotes';
+import { usePwaInstall } from './hooks/usePwaInstall';
 import { useThemeSync } from './hooks/useTheme';
 import { useToasts } from './hooks/useToasts';
 import { useClickOutside } from './hooks/useClickOutside';
@@ -126,6 +127,15 @@ export default function App() {
   const [scale, setScale] = useState(1);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<SettingsTab>('appearance');
+  const [installPromptDismissed, setInstallPromptDismissed] = useState(() => {
+    try {
+      return localStorage.getItem('paligraph-install-dismissed') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const pwa = usePwaInstall();
   const [importOpen, setImportOpen] = useState(false);
   const [sourceOpen, setSourceOpen] = useState(false);
   const [backgroundOpen, setBackgroundOpen] = useState(false);
@@ -562,6 +572,30 @@ export default function App() {
     showToast(t('toast.folderDeleted'), 'neutral');
   };
 
+  const openSettings = (tab: SettingsTab = 'appearance'): void => {
+    closeFloatingSurfaces();
+    setSettingsInitialTab(tab);
+    setSettingsOpen(true);
+  };
+
+  const handleInstallPwa = async (): Promise<void> => {
+    const outcome = await pwa.promptInstall();
+    if (outcome === 'accepted') {
+      showToast(t('pwa.installSuccess'), 'success');
+    } else if (outcome === 'unavailable') {
+      showToast(t('pwa.installUnavailable'), 'neutral');
+    }
+  };
+
+  const dismissInstallPrompt = (): void => {
+    setInstallPromptDismissed(true);
+    try {
+      localStorage.setItem('paligraph-install-dismissed', '1');
+    } catch {
+      // localStorage can be disabled in private mode.
+    }
+  };
+
   const handleSourceApply = (markdown: string) => {
     if (!noteId) return;
     store.patchNote(noteId, { markdown }, { delay: 300 });
@@ -628,6 +662,11 @@ export default function App() {
         onSelectAll={(ids) => setSelectedNoteIds(new Set(ids))}
         onDeleteSelected={handleDeleteSelected}
         onMoveSelected={() => setMoveRequest({ ids: [...selectedNoteIds] })}
+        pwa={pwa}
+        installPromptDismissed={installPromptDismissed}
+        onInstallPwa={() => void handleInstallPwa()}
+        onOpenInstallGuide={() => openSettings('about')}
+        onDismissInstallPrompt={dismissInstallPrompt}
       />
 
       <main className="editor-shell">
@@ -650,10 +689,7 @@ export default function App() {
                 setBackgroundOpen((open) => !open);
                 setInspector(null);
               }}
-              onOpenSettings={() => {
-                closeFloatingSurfaces();
-                setSettingsOpen(true);
-              }}
+              onOpenSettings={() => openSettings()}
               onExportPdf={() => void handleExportNote(activeNote, 'pdf')}
               onExportMarkdown={() => void handleExportNote(activeNote, 'markdown')}
               onExportPng={() => void handleExportNote(activeNote, 'png')}
@@ -773,7 +809,15 @@ export default function App() {
         )}
       </main>
 
-      <SettingsDialog open={settingsOpen} notes={store.notes} onClose={() => setSettingsOpen(false)} onToast={showToast} />
+      <SettingsDialog
+        open={settingsOpen}
+        notes={store.notes}
+        initialTab={settingsInitialTab}
+        pwa={pwa}
+        onInstallPwa={() => void handleInstallPwa()}
+        onClose={() => setSettingsOpen(false)}
+        onToast={showToast}
+      />
       <Suspense fallback={null}>
         {importOpen ? (
           <ImportDialog

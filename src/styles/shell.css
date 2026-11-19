@@ -1861,3 +1861,81 @@
     opacity: 0.65;
   }
 }
+
+/* --------------------------------------------------------------- pwa prompt */
+.pwa-sidebar-card {
+  margin: 6px 4px 0;
+  padding: 10px;
+  border-radius: 11px;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
+  background:
+    radial-gradient(120% 140% at 0% 0%, var(--accent-soft), transparent 72%),
+    var(--surface-1);
+}
+
+.pwa-sidebar-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.pwa-sidebar-head img {
+  flex: none;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(20, 33, 52, 0.16);
+}
+
+.pwa-sidebar-head div {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pwa-sidebar-head strong {
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pwa-sidebar-head span {
+  color: var(--text-3);
+  font-size: 9.5px;
+  line-height: 1.4;
+}
+
+.pwa-dismiss {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  color: var(--text-3);
+  background: transparent;
+}
+
+.pwa-dismiss:hover {
+  color: var(--text);
+  background: var(--hover);
+}
+
+.pwa-dismiss svg {
+  width: 14px;
+  height: 14px;
+}
+
+.pwa-prompt-action {
+  width: 100%;
+  min-height: 29px;
+  margin-top: 8px;
+  padding: 4px 9px;
+  font-size: 10.5px;
+}
+
+@media (max-width: 720px) {
+  .pwa-sidebar-card {
+    margin-bottom: 2px;
+  }
+}
