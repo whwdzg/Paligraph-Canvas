@@ -665,6 +665,42 @@
   text-overflow: ellipsis;
 }
 
+.backup-chip {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 3px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, #b7791f 30%, transparent);
+  background: rgba(183, 121, 31, 0.1);
+  color: #9a6714;
+  font-size: 9.5px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.backup-chip:hover {
+  background: rgba(183, 121, 31, 0.17);
+  color: #7c4f0b;
+}
+
+.backup-chip svg {
+  width: 11px;
+  height: 11px;
+}
+
+[data-theme="dark"] .backup-chip {
+  border-color: rgba(255, 211, 107, 0.24);
+  background: rgba(255, 211, 107, 0.1);
+  color: #ffd36b;
+}
+
+[data-theme="dark"] .backup-chip:hover {
+  background: rgba(255, 211, 107, 0.17);
+}
+
 @keyframes spin {
   to { transform: rotate(360deg); }
 }

@@ -365,5 +365,8 @@
   "pwa.desktopStep1": "打开浏览器菜单，或点击地址栏的安装图标。",
   "pwa.desktopStep2": "选择“安装 Paligraph”/“安装应用”。",
   "pwa.installSuccess": "Paligraph 已安装",
-  "pwa.installUnavailable": "当前浏览器不支持直接安装，可在“设置 → 安装”查看方法。"
+  "pwa.installUnavailable": "当前浏览器不支持直接安装，可在“设置 → 安装”查看方法。",
+  "backup.chip": "备份 · {count} 笔",
+  "backup.hint": "浏览器可能清理本地数据，建议定期导出 .paligraph 可编辑文件。",
+  "backup.reminder": "本笔记已有 {count} 笔。浏览器可能清理本地数据，建议定期导出为可编辑文件。"
 }

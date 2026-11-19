@@ -23,6 +23,7 @@ import { ToastHost } from './components/common/ToastHost';
 import { useI18n } from './i18n/I18nProvider';
 import { useNotes } from './hooks/useNotes';
 import { usePwaInstall } from './hooks/usePwaInstall';
+import { inkStrokeCount, shouldSuggestBackup } from './lib/backup';
 import { useThemeSync } from './hooks/useTheme';
 import { useToasts } from './hooks/useToasts';
 import { useClickOutside } from './hooks/useClickOutside';
@@ -186,6 +187,9 @@ export default function App() {
 
   const activeNote = store.activeNote;
   const noteId = activeNote?.id;
+  const backupNotified = useRef<Set<string>>(new Set());
+  const backupStrokeCount = activeNote ? inkStrokeCount(activeNote.strokes) : 0;
+
   const readingMinutes = useMemo(() => {
     if (!activeNote?.markdown) return 0;
     const words = activeNote.markdown.trim().split(/\s+/).filter(Boolean).length;
@@ -220,6 +224,17 @@ export default function App() {
     },
     [pushToast, t],
   );
+
+  useEffect(() => {
+    if (!activeNote) return;
+    if (!shouldSuggestBackup(activeNote.strokes)) {
+      backupNotified.current.delete(activeNote.id);
+      return;
+    }
+    if (backupNotified.current.has(activeNote.id)) return;
+    backupNotified.current.add(activeNote.id);
+    showToast(t('backup.reminder', { count: backupStrokeCount }), 'neutral');
+  }, [activeNote, backupStrokeCount, showToast, t]);
 
   const closeFloatingSurfaces = useCallback(() => {
     setInspector(null);

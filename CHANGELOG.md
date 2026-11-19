@@ -2,6 +2,21 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.7.0] — 2026-11-20
+
+### Local backup reminder
+
+- Notes with more than **100 ink strokes** now show a compact `Back up · N` chip in the editor header.
+- The first time a note crosses the threshold in a session, a reminder explains that browsers may clear local IndexedDB data and recommends exporting an editable file.
+- Clicking the chip downloads the current note as a lossless `.paligraph` file; eraser masks are excluded from the visible-stroke count.
+- Reminders are per note and reset if the note falls back below the threshold.
+
+### Internal
+
+- Added `backup.ts` helpers and threshold tests (59 total).
+- Added `qa:backup` browser QA with a synthetic 101-stroke note.
+- Bumped package/app version to 1.7.0.
+
 ## [1.6.0] — 2026-11-20
 
 ### Ink and style polish

@@ -16,6 +16,7 @@ import {
   Warning24Regular,
 } from '@fluentui/react-icons';
 import { useI18n } from '../../i18n/I18nProvider';
+import { inkStrokeCount, shouldSuggestBackup } from '../../lib/backup';
 import { formatFullDate } from '../../lib/format';
 import type { Note } from '../../lib/types';
 import type { SaveStatus } from '../../hooks/useNotes';
@@ -62,6 +63,8 @@ export function EditorHeader({
   onNewNote,
 }: EditorHeaderProps) {
   const { t, language } = useI18n();
+  const backupSuggested = shouldSuggestBackup(note.strokes);
+  const backupCount = inkStrokeCount(note.strokes);
   const [exportOpen, setExportOpen] = useState(false);
   const exportButtonRef = useRef<HTMLButtonElement>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
@@ -101,6 +104,20 @@ export function EditorHeader({
                 : t('note.saved')}
             <span className="save-separator" aria-hidden="true">·</span>
             <span className="save-date">{formatFullDate(note.updatedAt, language)}</span>
+            {backupSuggested ? (
+              <>
+                <span className="save-separator" aria-hidden="true">·</span>
+                <button
+                  type="button"
+                  className="backup-chip"
+                  onClick={onExportEditable}
+                  title={t('backup.hint')}
+                >
+                  <Warning24Regular />
+                  {t('backup.chip', { count: backupCount })}
+                </button>
+              </>
+            ) : null}
           </span>
         </div>
       </div>

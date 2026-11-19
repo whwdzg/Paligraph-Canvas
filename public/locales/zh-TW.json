@@ -365,5 +365,8 @@
   "pwa.desktopStep1": "開啟瀏覽器選單，或點擊網址列的安裝圖示。",
   "pwa.desktopStep2": "選擇「安裝 Paligraph」/「安裝應用程式」。",
   "pwa.installSuccess": "Paligraph 已安裝",
-  "pwa.installUnavailable": "目前瀏覽器不支援直接安裝，可在「設定 → 安裝」查看方式。"
+  "pwa.installUnavailable": "目前瀏覽器不支援直接安裝，可在「設定 → 安裝」查看方式。",
+  "backup.chip": "備份 · {count} 筆",
+  "backup.hint": "瀏覽器可能清理本機資料，建議定期匯出 .paligraph 可編輯檔案。",
+  "backup.reminder": "本筆記已有 {count} 筆。瀏覽器可能清理本機資料，建議定期匯出為可編輯檔案。"
 }

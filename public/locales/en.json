@@ -365,5 +365,8 @@
   "pwa.desktopStep1": "Open the browser menu (or the install icon in the address bar).",
   "pwa.desktopStep2": "Choose “Install Paligraph” / “Install app”.",
   "pwa.installSuccess": "Paligraph installed",
-  "pwa.installUnavailable": "Installation is not available in this browser. Use Settings → Install for instructions."
+  "pwa.installUnavailable": "Installation is not available in this browser. Use Settings → Install for instructions.",
+  "backup.chip": "Back up · {count}",
+  "backup.hint": "Browsers can clear local data. Export an editable .paligraph backup regularly.",
+  "backup.reminder": "This note has {count} ink strokes. Browsers can clear local data, so export an editable file regularly."
 }

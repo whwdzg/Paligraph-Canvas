@@ -365,5 +365,8 @@
   "pwa.desktopStep1": "ブラウザーのメニュー、またはアドレスバーのインストールアイコンを開きます。",
   "pwa.desktopStep2": "「Paligraph をインストール」/「アプリをインストール」を選択します。",
   "pwa.installSuccess": "Paligraph をインストールしました",
-  "pwa.installUnavailable": "このブラウザーでは直接インストールできません。「設定 → インストール」を確認してください。"
+  "pwa.installUnavailable": "このブラウザーでは直接インストールできません。「設定 → インストール」を確認してください。",
+  "backup.chip": "バックアップ · {count}",
+  "backup.hint": "ブラウザーがローカルデータを消去する場合があります。定期的に .paligraph を書き出してください。",
+  "backup.reminder": "このノートには {count} 本のインクがあります。ブラウザーがローカルデータを消去する場合があるため、定期的に編集可能ファイルを書き出してください。"
 }

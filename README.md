@@ -3,7 +3,7 @@
 **灵感，落于笔尖。** A local-first notebook for ink, Markdown and the ideas in between.
 
 [![Deploy to GitHub Pages](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml/badge.svg)](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml)
-![Version](https://img.shields.io/badge/version-1.6.0-2b7fff)
+![Version](https://img.shields.io/badge/version-1.7.0-2b7fff)
 ![License](https://img.shields.io/badge/license-GPL--3.0--or--later-4c1)
 
 Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布、一套接近 Apple Notes 的悬浮工具栏、Fluent Design Sun Valley 的材质，以及可选的液态玻璃（liquid glass）质感。它把笔迹数据和 Markdown 都留在这台设备上，并可以在需要时导出为 PDF 或 Markdown。
@@ -96,6 +96,14 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 - 顶栏导出当前笔记；笔记列表三个点可对任意笔记使用同一组导出格式。
 - 导出模块、jsPDF 与 KaTeX 只在需要时加载，不进入首屏。
 
+### 本地备份提醒
+
+- 当前笔记超过 **100 笔**后，顶栏出现 `备份 · N 笔` 提示；每次会话首次超过阈值时还会弹出一条提醒。
+- 点击顶栏提示即可直接导出当前笔记的 `.paligraph` 可编辑文件。
+- 浏览器可能在清理站点数据时删除 IndexedDB 笔记，建议重要笔记定期导出本地备份。
+
+![超过 100 笔时的本地备份提示](docs/backup.png)
+
 ### 外观、背景与可访问性
 
 - 浅色 / 深色 / 跟随系统三种主题，切换即时生效。
@@ -141,7 +149,7 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 npm install
 npm run dev        # http://localhost:4173
 npm run typecheck  # TypeScript
-npm test           # Vitest · 57 tests
+npm test           # Vitest · 59 tests
 npm run build      # 生产构建到 dist/
 npm run preview    # 预览构建，端口 4173
 ```
@@ -343,6 +351,7 @@ Paligraph-Canvas/
 │  │  ├─ editable.ts               `.paligraph` 无损可编辑格式
 │  │  ├─ storageUsage.ts           存储占用估算与分类
 │  │  ├─ folders.ts                文件夹树、路径与批量整理
+│  │  ├─ backup.ts                 笔数阈值与本地备份提醒
 │  │  ├─ shapes.ts                 基本图形识别与吸附
 │  │  └─ thumbnail.ts              Markdown/笔迹/图片内容预览图
 │  ├─ state/                      Zustand 设置 store
@@ -361,7 +370,7 @@ npm test
 npm run build
 ```
 
-当前验证结果：**57 个单元测试通过**，TypeScript 严格模式无错误，生产构建成功。
+当前验证结果：**59 个单元测试通过**，TypeScript 严格模式无错误，生产构建成功。
 
 浏览器 QA 需要先运行 `npm run preview`，并使用本地 Edge/Chrome：
 
@@ -376,6 +385,7 @@ npm run qa:storage      # 设置中的存储占用读数和明细
 npm run qa:folders      # 文件夹、多选移动/删除、笔记菜单导出
 npm run qa:latex        # Markdown/Obsidian LaTeX 渲染
 npm run qa:pwa          # 安装提示、Service Worker、离线启动
+npm run qa:backup       # 超过 100 笔的备份提醒与可编辑文件导出
 npm run qa:images       # 插入图片、选中、旋转、复制、删除、撤销
 npm run qa:export       # PNG / SVG / .paligraph 导出与再导入
 node scripts/qa-assets.mjs  # Obsidian 附件导入与图片 lightbox
