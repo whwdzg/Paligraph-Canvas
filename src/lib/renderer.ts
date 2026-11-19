@@ -199,19 +199,30 @@ function ribbonPath(
   baseWidth: number,
   seed: number,
   rough = 0,
+  taper = 0,
 ): void {
   if (!points.length) return;
   const left: InkPoint[] = [];
   const right: InkPoint[] = [];
-  for (let i = 0; i < points.length; i += 1) {
+  const widths: number[] = [];
+  const count = points.length;
+  const taperSpan = Math.min(5, Math.max(1, count - 1));
+  for (let i = 0; i < count; i += 1) {
     const prev = points[Math.max(0, i - 1)];
-    const next = points[Math.min(points.length - 1, i + 1)];
+    const next = points[Math.min(count - 1, i + 1)];
     let nx = -(next.y - prev.y);
     let ny = next.x - prev.x;
     const length = Math.hypot(nx, ny) || 1;
     nx /= length;
     ny /= length;
-    const width = Math.max(0.7, baseWidth * (0.38 + clamp(points[i].p, 0, 1) * 0.92));
+    const edge = Math.min(i, count - 1 - i);
+    // A gentle tip taper makes pen and brush strokes feel like ink deposited
+    // by a moving nib instead of a constant-width tube.
+    const taperFactor = count > 4 && taper > 0
+      ? (1 - taper) + taper * Math.min(1, edge / taperSpan)
+      : 1;
+    const width = Math.max(0.7, baseWidth * (0.38 + clamp(points[i].p, 0, 1) * 0.92) * taperFactor);
+    widths.push(width);
     const jitter = rough ? seeded(seed, i, 1) * rough : 0;
     left.push({ ...points[i], x: points[i].x + nx * (width * 0.5 + jitter), y: points[i].y + ny * (width * 0.5 + jitter) });
     right.push({ ...points[i], x: points[i].x - nx * (width * 0.5 - jitter), y: points[i].y - ny * (width * 0.5 - jitter) });
@@ -229,7 +240,7 @@ function ribbonPath(
   const lastLeft = left[left.length - 1];
   ctx.lineTo(lastLeft.x, lastLeft.y);
   const lastRight = right[right.length - 1];
-  const capWidth = baseWidth * (0.38 + clamp(points[points.length - 1].p, 0, 1) * 0.92);
+  const capWidth = widths[widths.length - 1];
   // Rounded cap on the far end.
   ctx.arc(lastLeft.x, lastLeft.y, capWidth / 2, 0, Math.PI, false);
   ctx.lineTo(lastRight.x, lastRight.y);
@@ -239,7 +250,7 @@ function ribbonPath(
     ctx.quadraticCurveTo(right[i].x, right[i].y, midX, midY);
   }
   ctx.lineTo(right[0].x, right[0].y);
-  const firstWidth = baseWidth * (0.38 + clamp(points[0].p, 0, 1) * 0.92);
+  const firstWidth = widths[0];
   ctx.arc(right[0].x, right[0].y, firstWidth / 2, Math.PI, Math.PI * 2, false);
   ctx.closePath();
   ctx.fill();
@@ -320,13 +331,21 @@ export function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke): void 
   }
 
   if (stroke.tool === 'highlighter') {
-    ctx.globalAlpha = clamp(stroke.opacity, 0.08, 0.55);
-    ctx.lineWidth = stroke.size;
+    const opacity = clamp(stroke.opacity, 0.08, 0.55);
     if (points.length === 1) {
+      ctx.globalAlpha = opacity;
       ctx.beginPath();
       ctx.arc(points[0].x, points[0].y, stroke.size / 2, 0, Math.PI * 2);
       ctx.fill();
     } else {
+      // A barely visible wider pass suggests the soft bleed at the edge of a
+      // felt-tip highlighter; the crisp pass keeps the centre legible.
+      ctx.globalAlpha = opacity * 0.16;
+      ctx.lineWidth = stroke.size * 1.08;
+      traceSmoothPath(ctx, points);
+      ctx.stroke();
+      ctx.globalAlpha = opacity;
+      ctx.lineWidth = stroke.size;
       traceSmoothPath(ctx, points);
       ctx.stroke();
     }
@@ -367,24 +386,57 @@ export function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke): void 
   }
 
   if (stroke.variant === 'pencil') {
-    // Graphite: a soft body with three deterministic, offset grain lines.
-    ctx.globalAlpha = clamp(stroke.opacity * 0.72, 0.12, 0.8);
-    ribbonPath(ctx, points, stroke.size, stroke.seed, stroke.size * 0.06);
-    ctx.globalAlpha = clamp(stroke.opacity * 0.14, 0.05, 0.4);
-    for (let pass = 0; pass < 3; pass += 1) {
-      jitterPath(ctx, points, stroke.seed + pass * 97, stroke.size * (0.14 + pass * 0.11), Math.max(0.55, stroke.size * 0.11));
+    // Graphite: a soft body with deterministic, offset grain lines. The
+    // slightly larger pass count reads as tooth even at thin 4 px sizes.
+    ctx.globalAlpha = clamp(stroke.opacity * 0.68, 0.12, 0.8);
+    ribbonPath(ctx, points, stroke.size, stroke.seed, stroke.size * 0.07);
+    ctx.globalAlpha = clamp(stroke.opacity * 0.2, 0.05, 0.45);
+    for (let pass = 0; pass < 5; pass += 1) {
+      jitterPath(
+        ctx,
+        points,
+        stroke.seed + pass * 97,
+        stroke.size * (0.1 + pass * 0.065),
+        Math.max(0.5, stroke.size * (0.075 + pass * 0.018)),
+      );
     }
   } else if (stroke.variant === 'crayon') {
-    ctx.globalAlpha = clamp(stroke.opacity * 0.56, 0.12, 0.72);
-    ribbonPath(ctx, points, stroke.size, stroke.seed, stroke.size * 0.16);
-    ctx.globalAlpha = clamp(stroke.opacity * 0.16, 0.06, 0.45);
-    for (let pass = 0; pass < 5; pass += 1) {
-      jitterPath(ctx, points, stroke.seed + pass * 53, stroke.size * (0.18 + pass * 0.08), Math.max(0.7, stroke.size * 0.13));
+    ctx.globalAlpha = clamp(stroke.opacity * 0.52, 0.12, 0.72);
+    ribbonPath(ctx, points, stroke.size, stroke.seed, stroke.size * 0.22);
+    ctx.globalAlpha = clamp(stroke.opacity * 0.2, 0.06, 0.5);
+    for (let pass = 0; pass < 7; pass += 1) {
+      jitterPath(
+        ctx,
+        points,
+        stroke.seed + pass * 53,
+        stroke.size * (0.17 + pass * 0.055),
+        Math.max(0.65, stroke.size * (0.1 + pass * 0.012)),
+      );
     }
   } else {
-    // Pen and ink brush use a pressure-sensitive filled ribbon.
+    // Pen and ink brush use a pressure-sensitive filled ribbon with a soft tip.
     ctx.globalAlpha = clamp(stroke.opacity, 0.15, 1);
-    ribbonPath(ctx, points, stroke.size * (stroke.variant === 'brush' ? 1.22 : 1), stroke.seed, 0);
+    ribbonPath(
+      ctx,
+      points,
+      stroke.size * (stroke.variant === 'brush' ? 1.22 : 1),
+      stroke.seed,
+      0,
+      stroke.variant === 'brush' ? 0.5 : 0.24,
+    );
+    if (stroke.variant === 'brush') {
+      // Offset hairs break up the otherwise uniform brush body.
+      ctx.globalAlpha = clamp(stroke.opacity * 0.2, 0.04, 0.34);
+      for (let pass = 0; pass < 3; pass += 1) {
+        jitterPath(
+          ctx,
+          points,
+          stroke.seed + pass * 131,
+          stroke.size * (0.14 + pass * 0.075),
+          Math.max(0.4, stroke.size * (0.07 + pass * 0.014)),
+        );
+      }
+    }
   }
   ctx.restore();
 }

@@ -12,6 +12,7 @@ import { HIGHLIGHTER_COLORS, PEN_COLORS } from '../../config/palette';
 import type { InkTool, PenVariant, Settings } from '../../lib/types';
 import { Slider } from '../common/Slider';
 import { Segmented } from '../common/Segmented';
+import { StrokePreview } from './StrokePreview';
 
 interface ToolOptionsProps {
   tool: Exclude<InkTool, 'lasso'>;
@@ -93,6 +94,13 @@ export function ToolOptions({ tool, settings, onChange, onClose, onClearAll }: T
                   onClick={() => onChange({ penVariant: value })}
                 >
                   <span className="brush-tile-icon"><Icon /></span>
+                  <span className="brush-tile-sample" aria-hidden="true">
+                    <StrokePreview
+                      variant={value}
+                      color={settings.penColor}
+                      size={Math.min(6, settings.penSize)}
+                    />
+                  </span>
                   <span>{t(`tools.penVariants.${value}`)}</span>
                 </button>
               ))}
@@ -119,12 +127,10 @@ export function ToolOptions({ tool, settings, onChange, onClose, onClearAll }: T
               accent={settings.penColor}
             />
             <div className="brush-preview" aria-hidden="true">
-              <span
-                style={{
-                  width: `${Math.min(46, Math.max(3, settings.penSize * 1.7))}px`,
-                  height: `${Math.min(46, Math.max(3, settings.penSize * 1.7))}px`,
-                  background: settings.penColor,
-                }}
+              <StrokePreview
+                variant={settings.penVariant}
+                color={settings.penColor}
+                size={settings.penSize}
               />
             </div>
           </div>
@@ -168,7 +174,14 @@ export function ToolOptions({ tool, settings, onChange, onClose, onClearAll }: T
             accent={settings.highlighterColor}
           />
           <div className="highlight-preview" aria-hidden="true" style={{ background: settings.highlighterColor }}>
-            {t('tools.highlightPreview')}
+            <StrokePreview
+              tool="highlighter"
+              variant="pen"
+              color={settings.highlighterColor}
+              size={settings.highlighterSize}
+              className="highlight-preview-ink"
+            />
+            <span>{t('tools.highlightPreview')}</span>
           </div>
         </>
       ) : null}

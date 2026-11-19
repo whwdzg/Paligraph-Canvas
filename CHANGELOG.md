@@ -2,6 +2,22 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.6.0] — 2026-11-20
+
+### Ink and style polish
+
+- Pressure input is now smoothed with a two-sided filter, removing sensor spikes while preserving deliberate pressure changes and the stroke endpoints.
+- Pen and brush ribbons taper gently at both ends instead of ending as constant-width tubes.
+- Brush strokes gain two subtle bristle hairs; the highlighter gains a faint wider bleed pass; pencil and crayon grain remains deterministic.
+- The pen options panel now shows a live canvas ink preview rendered by the real `drawStroke` pipeline, including colour, width, pressure, taper and texture.
+- Refined brush tile selection, tool active states, colour swatches and preview surfaces.
+
+### Internal
+
+- Added `StrokePreview`, pressure smoothing and renderer taper/bristle passes.
+- Added a pressure-smoothing unit test (57 total).
+- Bumped package/app version to 1.6.0.
+
 ## [1.5.0] — 2026-11-20
 
 ### Installable PWA

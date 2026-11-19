@@ -3,7 +3,7 @@
 **灵感，落于笔尖。** A local-first notebook for ink, Markdown and the ideas in between.
 
 [![Deploy to GitHub Pages](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml/badge.svg)](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml)
-![Version](https://img.shields.io/badge/version-1.5.0-2b7fff)
+![Version](https://img.shields.io/badge/version-1.6.0-2b7fff)
 ![License](https://img.shields.io/badge/license-GPL--3.0--or--later-4c1)
 
 Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布、一套接近 Apple Notes 的悬浮工具栏、Fluent Design Sun Valley 的材质，以及可选的液态玻璃（liquid glass）质感。它把笔迹数据和 Markdown 都留在这台设备上，并可以在需要时导出为 PDF 或 Markdown。
@@ -35,7 +35,11 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 
 - 无限画布，世界坐标与视口缩放分离；平移或缩放时不会破坏绘制精度。
 - 钢笔、铅笔、蜡笔、毛笔四种笔触，压感会改变线条粗细。
+- 笔触渲染细节：压感双端平滑、两端自然收锋、毛笔鬃毛、铅笔/蜡笔颗粒、荧光笔柔边。
+- 画笔选项中的预览使用与画布相同的 Canvas 渲染器，直接展示当前颜色、粗细和纹理。
 - 荧光笔支持自由绘制与**直线**两种模式，颜色、宽度独立设置。
+
+![钢笔、铅笔、蜡笔与毛笔的笔触效果](docs/ink.png)
 - **基本图形纠正**：画完直线、矩形、圆形/椭圆或三角形后按住笔尖停留，松手时自动吸附为干净图形。
 - **手写数学**：长按已有笔迹约 0.56 秒，识别一元一次方程、四则运算和简单竖式；识别结果可在对话框中直接修正并实时求解。
 - 橡皮支持**按笔迹擦**（整条笔画）与**像素擦**（只擦除触及区域），也可以一键清空画布。
@@ -137,7 +141,7 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 npm install
 npm run dev        # http://localhost:4173
 npm run typecheck  # TypeScript
-npm test           # Vitest · 56 tests
+npm test           # Vitest · 57 tests
 npm run build      # 生产构建到 dist/
 npm run preview    # 预览构建，端口 4173
 ```
@@ -357,7 +361,7 @@ npm test
 npm run build
 ```
 
-当前验证结果：**56 个单元测试通过**，TypeScript 严格模式无错误，生产构建成功。
+当前验证结果：**57 个单元测试通过**，TypeScript 严格模式无错误，生产构建成功。
 
 浏览器 QA 需要先运行 `npm run preview`，并使用本地 Edge/Chrome：
 

@@ -246,6 +246,35 @@ export function finalizeStrokePoints(points: readonly InkPoint[], tolerance = 0.
   return simplifyPoints(points, tolerance);
 }
 
+/**
+ * Pressure sensors are noticeably noisy on some pens and tablets. A short
+ * two-sided exponential filter keeps the width transition smooth without
+ * rounding off deliberate pressure changes. Mouse input (p=0.5) is untouched.
+ */
+export function smoothStrokePressure(points: readonly InkPoint[], alpha = 0.34): InkPoint[] {
+  if (points.length < 3) return [...points];
+  const forward: number[] = new Array(points.length);
+  const backward: number[] = new Array(points.length);
+  let pressure = clamp(points[0].p, 0, 1);
+  for (let i = 0; i < points.length; i += 1) {
+    pressure = i === 0 ? pressure : pressure * (1 - alpha) + clamp(points[i].p, 0, 1) * alpha;
+    forward[i] = pressure;
+  }
+  pressure = clamp(points[points.length - 1].p, 0, 1);
+  for (let i = points.length - 1; i >= 0; i -= 1) {
+    pressure = i === points.length - 1 ? pressure : pressure * (1 - alpha) + clamp(points[i].p, 0, 1) * alpha;
+    backward[i] = pressure;
+  }
+  return points.map((point, index) => ({
+    ...point,
+    p: index === 0
+      ? clamp(point.p, 0, 1)
+      : index === points.length - 1
+        ? clamp(point.p, 0, 1)
+        : clamp(forward[index] * 0.62 + backward[index] * 0.38, 0, 1),
+  }));
+}
+
 export function finishStroke(
   points: readonly InkPoint[],
   options: {
@@ -263,6 +292,7 @@ export function finishStroke(
     finalPoints = [finalPoints[0], finalPoints[finalPoints.length - 1]];
   } else if (finalPoints.length > 2) {
     finalPoints = finalizeStrokePoints(finalPoints);
+    if (options.tool === 'pen') finalPoints = smoothStrokePressure(finalPoints);
   }
   return {
     id: createId(),

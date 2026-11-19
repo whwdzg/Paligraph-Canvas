@@ -8,6 +8,7 @@ import {
   makeSelection,
   moveStrokes,
   rotateStrokes,
+  smoothStrokePressure,
   strokeIntersectsEraser,
   strokesInLasso,
 } from './strokes';
@@ -44,6 +45,17 @@ describe('stroke operations', () => {
     expect(stroke?.id).toMatch(/^s_/);
     expect(stroke?.points.length).toBe(2);
     expect(stroke?.color).toBe('#123456');
+  });
+
+  it('smoothes noisy pressure while keeping the endpoints', () => {
+    const raw = [point(0, 0, 0.2), point(10, 0, 0.95), point(20, 0, 0.1), point(30, 0, 0.6)];
+    const smooth = smoothStrokePressure(raw);
+    expect(smooth[0].p).toBe(0.2);
+    expect(smooth[3].p).toBe(0.6);
+    expect(smooth[1].p).toBeGreaterThan(0.2);
+    expect(smooth[1].p).toBeLessThan(0.95);
+    expect(smooth[2].p).toBeGreaterThan(0.1);
+    expect(smooth[2].p).toBeLessThan(0.6);
   });
 
   it('turns a freehand highlighter into a straight line when requested', () => {
