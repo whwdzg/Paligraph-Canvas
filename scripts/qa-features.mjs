@@ -90,7 +90,7 @@ await check('draw and select, copy and paste', async () => {
   await page.mouse.move(box.x + 650, box.y + 470, { steps: 16 });
   await page.mouse.up();
   await page.waitForTimeout(350);
-  await page.getByRole('button', { name: '选择' }).click();
+  await page.locator('.tool-button[aria-label="选择"]').click();
   await page.mouse.move(box.x + 300, box.y + 350);
   await page.mouse.down();
   for (const [x, y] of [[300, 350], [720, 350], [720, 520], [300, 520]]) {

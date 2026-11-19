@@ -74,7 +74,7 @@ console.log('undo enabled:', await page.locator('.history-tools button').first()
 await page.waitForTimeout(800);
 
 await step('lasso selection', async () => {
-  await page.getByRole('button', { name: '选择' }).click();
+  await page.locator('.tool-button[aria-label="选择"]').click();
   const box = await page.locator('.drawing-surface').boundingBox();
   await page.mouse.move(box.x + 220, box.y + 95);
   await page.mouse.down();

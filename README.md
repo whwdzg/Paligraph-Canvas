@@ -3,7 +3,7 @@
 **灵感，落于笔尖。** A local-first notebook for ink, Markdown and the ideas in between.
 
 [![Deploy to GitHub Pages](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml/badge.svg)](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml)
-![Version](https://img.shields.io/badge/version-1.3.0-2b7fff)
+![Version](https://img.shields.io/badge/version-1.4.0-2b7fff)
 ![License](https://img.shields.io/badge/license-GPL--3.0--or--later-4c1)
 
 Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布、一套接近 Apple Notes 的悬浮工具栏、Fluent Design Sun Valley 的材质，以及可选的液态玻璃（liquid glass）质感。它把笔迹数据和 Markdown 都留在这台设备上，并可以在需要时导出为 PDF 或 Markdown。
@@ -20,6 +20,7 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 | --- | --- |
 | ![画完后按住识别矩形](docs/shape-recognition.png) | ![长按笔迹求解](docs/handwriting-math.png) |
 | ![画布图片与选区](docs/canvas-images.png) | ![PNG/SVG/可编辑笔记导出](docs/export-menu.png) |
+| ![Obsidian 层级文件夹](docs/folders.png) | ![Markdown LaTeX 渲染](docs/latex.png) |
 
 <p align="center">
   <img src="docs/mobile.png" alt="Paligraph Canvas 移动端" width="280" />
@@ -56,11 +57,21 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 - 图片位于背景之上、笔迹之下，可以像笔迹一样被套索选中、移动、自由旋转、90° 旋转、复制、再制或删除。
 - 图片操作与笔迹操作共享同一套撤销历史；删除图片后可以撤销恢复。
 
+### 笔记库、文件夹与多选
+
+- 侧栏支持**嵌套文件夹**：新建、重命名、删除文件夹，点击文件夹筛选笔记。
+- 删除文件夹时，其中的笔记和子文件夹内容会移动到上一级文件夹，不会删除笔记。
+- 笔记列表支持**多选模式**：逐篇选择或全选，然后批量移动到文件夹或删除。
+- 新建笔记会落在当前选中的文件夹；也可以在“未分类”和“全部笔记”之间切换。
+- 每篇笔记右侧的三个点可以**移动到文件夹**或直接导出 PDF、Markdown、PNG、SVG、`.paligraph`。
+
 ### Markdown / Obsidian
 
 - 导入一个或多个 `.md` 文件，或通过浏览器文件夹选择器导入整个 Obsidian 库。
 - 支持拖放文件或文件夹。
 - 保留 vault 相对路径和小型图片附件；`![[image.png]]`、`[[Note|label]]`、`==highlight==` 与 `> [!tip]` 等 Obsidian 语法会转成可读的阅读卡片。
+- **按 Obsidian 原始目录层级创建嵌套文件夹**，笔记自动放入对应文件夹；重新导入同一路径会复用已有文件夹。
+- **LaTeX 数学公式**通过 KaTeX 在阅读卡片中渲染：支持 `$...$`、`$$...$$`、`\(...\)` 和 `\[...\]`；代码块里的公式不会被误渲染。
 - 原始 Markdown 无损保留，可在右侧源码抽屉中编辑。
 - 每篇导入笔记会变成一张画布笔记：阅读卡片位于世界坐标中，可直接在其上绘图、圈画、批注。
 - 导入笔记在笔记列表中生成**内容预览图**：包含标题、正文摘要；如果 Markdown 引用了 Vault 内的第一张图片，预览图会把它裁剪成封面。
@@ -77,7 +88,8 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 - **SVG**：矢量导出笔迹、图形、画布图片与背景；像素橡皮会转成 SVG mask，缩放不糊。
 - **Paligraph 可编辑笔记（`.paligraph`）**：无损 JSON，包含 Markdown、笔迹、图片、背景和附件，可重新导入继续编辑。
 - 也可以把导出的 PNG/SVG 再当作图片插入任意笔记。
-- 导出模块与 jsPDF 只在点击导出时加载，不进入首屏。
+- 顶栏导出当前笔记；笔记列表三个点可对任意笔记使用同一组导出格式。
+- 导出模块、jsPDF 与 KaTeX 只在需要时加载，不进入首屏。
 
 ### 外观、背景与可访问性
 
@@ -93,7 +105,7 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 - 内置简体中文、繁體中文、English、日本語；默认跟随浏览器语言。
 - 语言文件为普通 JSON；支持从设置中导入自定义语言包，缺失键回退英语。
 - 设置以版本化 `{ version, settings }` JSON 导入/导出，可复制、下载、恢复默认。
-- 笔记与笔迹保存在 IndexedDB；设置、语言偏好保存在 localStorage。
+- 笔记、笔迹、画布图片和文件夹保存在 IndexedDB（文件夹使用独立 object store）；设置、语言偏好保存在 localStorage。
 - 设置 JSON 不包含笔记内容（这是有意设计，避免把大量笔迹塞进偏好文件）。
 
 ### 存储占用
@@ -115,7 +127,7 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 npm install
 npm run dev        # http://localhost:4173
 npm run typecheck  # TypeScript
-npm test           # Vitest · 52 tests
+npm test           # Vitest · 56 tests
 npm run build      # 生产构建到 dist/
 npm run preview    # 预览构建，端口 4173
 ```
@@ -155,6 +167,9 @@ $env:GITHUB_ACTIONS='true'; npm run build
 | 颜色圆环 | 打开当前工具的配色与尺寸选项 |
 | 撤销 / 重做 | 底部工具栏按钮，或 `Ctrl/⌘ + Z`、`Ctrl/⌘ + Shift + Z` |
 | 选择 | 套索圈选笔迹/图片；拖动选区移动，拖动圆形手柄旋转 |
+| 文件夹栏 | 新建/重命名/删除嵌套文件夹，点击筛选笔记 |
+| 多选 | 进入多选模式，逐篇或全选后批量移动、删除 |
+| 笔记三个点 | 移动到文件夹，或导出 PDF/Markdown/PNG/SVG/可编辑笔记 |
 | 图片按钮（顶栏） | 向当前笔记插入 PNG/JPG/WebP/GIF/SVG |
 | 背景按钮（顶栏网格） | 打开当前笔记的背景面板 |
 | 导出（顶栏） | PDF、Markdown、PNG、SVG 或 `.paligraph` 可编辑笔记 |
@@ -266,7 +281,7 @@ $env:GITHUB_ACTIONS='true'; npm run build
 ### 性能策略
 
 - 首屏只加载 React、Canvas UI 与应用状态；Markdown 渲染器、Obsidian 扫描器、jsPDF 都是按需 chunk。
-- 当前构建首屏 JS gzip 约 **120 KB**，CSS gzip 约 **14 KB**，语言包约 **5 KB**；手写数学识别器、Markdown 渲染器、SVG/PNG 编码与导出模块（jsPDF 约 121 KB gzip）都在需要时才下载。
+- 当前构建首屏 JS gzip 约 **126 KB**，CSS gzip 约 **15 KB**，语言包约 **5 KB**；手写数学识别器、Markdown + KaTeX 渲染器（约 100 KB gzip，KaTeX CSS 约 8 KB gzip）、SVG/PNG 编码与导出模块（jsPDF 约 121 KB gzip）都在需要时才下载。
 - 画布图片使用解码缓存（最多 24 张），离屏/缩略图导出按需解码；插入时大图会先缩小，避免把原始相机照片长期留在内存。
 - 所有 Canvas 层按 `devicePixelRatio` 渲染，但根据视口面积与设备内存限制像素预算；大屏不会直接使用 2× 全屏位图，避免四层画布把内存放大到不可控。
 - 只绘制视口内的笔画；输入点会做最小距离过滤、结束时 RDP 简化，避免存储冗余点。
@@ -310,6 +325,7 @@ Paligraph-Canvas/
 │  │  ├─ media.ts                  画布图片、SVG/位图导入与解码缓存
 │  │  ├─ editable.ts               `.paligraph` 无损可编辑格式
 │  │  ├─ storageUsage.ts           存储占用估算与分类
+│  │  ├─ folders.ts                文件夹树、路径与批量整理
 │  │  ├─ shapes.ts                 基本图形识别与吸附
 │  │  └─ thumbnail.ts              Markdown/笔迹/图片内容预览图
 │  ├─ state/                      Zustand 设置 store
@@ -328,7 +344,7 @@ npm test
 npm run build
 ```
 
-当前验证结果：**52 个单元测试通过**，TypeScript 严格模式无错误，生产构建成功。
+当前验证结果：**56 个单元测试通过**，TypeScript 严格模式无错误，生产构建成功。
 
 浏览器 QA 需要先运行 `npm run preview`，并使用本地 Edge/Chrome：
 
@@ -340,6 +356,8 @@ npm run qa:features     # 荧光笔直线、橡皮、复制粘贴、设置 JSON�
 npm run qa:shapes-math  # 图形吸附、手写数学与竖式
 npm run qa:previews     # Markdown / Obsidian 内容预览图
 npm run qa:storage      # 设置中的存储占用读数和明细
+npm run qa:folders      # 文件夹、多选移动/删除、笔记菜单导出
+npm run qa:latex        # Markdown/Obsidian LaTeX 渲染
 npm run qa:images       # 插入图片、选中、旋转、复制、删除、撤销
 npm run qa:export       # PNG / SVG / .paligraph 导出与再导入
 node scripts/qa-assets.mjs  # Obsidian 附件导入与图片 lightbox
@@ -358,6 +376,8 @@ node scripts/qa-pdf.mjs     # 中文 PDF 导出
 - 目前没有云同步、协作或多设备合并；数据属于当前浏览器配置文件。
 - “双指长按”是故意设计的防误触机制；首次使用可能需要一两次适应。
 - 手写数学使用本地几何 + 字体骨架模板识别，不是神经网络 OCR；支持数字、`x`、四则运算和一元一次方程。识别结果始终可编辑，复杂排版或潦草字迹可能需要手动修正。
+- Markdown 数学公式使用 KaTeX 的常用 LaTeX 子集；少数非 KaTeX 命令会显示错误标记。KaTeX 只用于阅读卡片，PDF/Markdown 导出保留原始 LaTeX 源码，不会把公式重新排版成数学字体。
+- 导入 Obsidian 文件夹时，选中的 vault 根文件夹也会保留为顶层文件夹；若要合并到现有结构，可在导入后移动笔记。
 - 基本图形纠正只处理直线、矩形、圆形/椭圆、三角形；不会自动纠正复杂图标或手写汉字。
 - 超大笔记（数千笔迹）在低端移动设备上仍可能需要降低缩放或关闭液态玻璃。DPR 预算会优先保证交互流畅。
 - 笔记列表内容预览图只内联 Vault 内的小图（data URL）；外链图片不会抓取，以保持本地优先和画布安全。

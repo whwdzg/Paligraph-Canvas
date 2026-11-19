@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { markdownExcerpt, normalizeObsidianMarkdown, titleFromMarkdown } from './markdown';
+import { markdownExcerpt, normalizeObsidianMarkdown, renderLatexToHtml, titleFromMarkdown } from './markdown';
 
 describe('Obsidian Markdown normalisation', () => {
   it('removes frontmatter from the rendered body', () => {
@@ -24,6 +24,13 @@ describe('Obsidian Markdown normalisation', () => {
     expect(titleFromMarkdown('---\ntitle: Front title\n---\nBody', 'file.md')).toBe('Front title');
     expect(titleFromMarkdown('# Heading\nBody', 'file.md')).toBe('Heading');
     expect(titleFromMarkdown('Body', 'my_note.md')).toBe('my note');
+  });
+
+  it('renders inline and display LaTeX with KaTeX', () => {
+    const inline = renderLatexToHtml('E = mc^2');
+    const display = renderLatexToHtml('\\int_0^1 x^2 dx = \\frac{1}{3}', true);
+    expect(inline).toContain('katex');
+    expect(display).toContain('katex-display');
   });
 
   it('builds a compact plain-text excerpt', () => {

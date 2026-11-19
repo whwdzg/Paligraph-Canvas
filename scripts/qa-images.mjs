@@ -52,7 +52,7 @@ const readImages = () => page.evaluate(() => new Promise((resolve, reject) => {
 await page.waitForTimeout(1000);
 const before = await readImages();
 
-await page.getByRole('button', { name: '选择', exact: true }).click();
+await page.locator('.tool-button[aria-label="选择"]').click();
 const surfaceBox = await page.locator('.drawing-surface').boundingBox();
 await page.mouse.click(surfaceBox.x + surfaceBox.width / 2, surfaceBox.y + surfaceBox.height / 2);
 await page.waitForTimeout(300);

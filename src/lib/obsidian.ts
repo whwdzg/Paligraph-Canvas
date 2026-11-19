@@ -27,6 +27,8 @@ export interface ImportedMarkdownNote {
   title: string;
   markdown: string;
   sourcePath: string;
+  /** Vault-relative folder path (without the Markdown filename). */
+  folderPath: string;
   excerpt: string;
   /** Only the attachments referenced by this note, keyed by relative path. */
   assets: Record<string, string>;
@@ -180,10 +182,13 @@ export async function scanVault(
       const raw = await entry.file.text();
       const resolved = normalizeObsidianMarkdown(raw, assetMap);
       const title = titleFromMarkdown(raw, entry.file.name);
+      const pathParts = entry.path.replace(/\\/g, '/').split('/').filter(Boolean);
+      pathParts.pop();
       notes.push({
         title,
         markdown: raw,
         sourcePath: entry.path,
+        folderPath: pathParts.join('/'),
         excerpt: markdownExcerpt(resolved),
         assets: attachmentSubset(raw, assetMap),
       });

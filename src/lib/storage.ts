@@ -1,4 +1,4 @@
-import type { Note } from './types';
+import type { Note, NoteFolder } from './types';
 
 /**
  * IndexedDB is used rather than localStorage because a single ink document can
@@ -6,8 +6,9 @@ import type { Note } from './types';
  * notes remain portable and the app can be reset by clearing site data.
  */
 const DB_NAME = 'paligraph-canvas';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = 'notes';
+const FOLDER_STORE = 'folders';
 
 let databasePromise: Promise<IDBDatabase> | null = null;
 
@@ -24,6 +25,10 @@ function openDatabase(): Promise<IDBDatabase> {
       if (!database.objectStoreNames.contains(STORE)) {
         const store = database.createObjectStore(STORE, { keyPath: 'id' });
         store.createIndex('updatedAt', 'updatedAt');
+      }
+      if (!database.objectStoreNames.contains(FOLDER_STORE)) {
+        const folders = database.createObjectStore(FOLDER_STORE, { keyPath: 'id' });
+        folders.createIndex('parentId', 'parentId');
       }
     };
     request.onsuccess = () => {
@@ -75,6 +80,57 @@ export async function saveNotes(notes: readonly Note[]): Promise<void> {
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error ?? new Error('Could not save notes.'));
     transaction.onabort = () => reject(transaction.error ?? new Error('The note save was aborted.'));
+  });
+}
+
+export async function loadFolders(): Promise<NoteFolder[]> {
+  try {
+    const database = await openDatabase();
+    const transaction = database.transaction(FOLDER_STORE, 'readonly');
+    return await requestToPromise(transaction.objectStore(FOLDER_STORE).getAll() as IDBRequest<NoteFolder[]>);
+  } catch {
+    // A transient folder-store failure should not make the whole library
+    // unreadable; flat notes still work without folders.
+    return [];
+  }
+}
+
+export async function saveFolders(folders: readonly NoteFolder[]): Promise<void> {
+  if (!folders.length) return;
+  const database = await openDatabase();
+  const transaction = database.transaction(FOLDER_STORE, 'readwrite');
+  const store = transaction.objectStore(FOLDER_STORE);
+  for (const folder of folders) store.put(folder);
+  await new Promise<void>((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error('Could not save folders.'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('The folder save was aborted.'));
+  });
+}
+
+export async function removeFolders(ids: readonly string[]): Promise<void> {
+  if (!ids.length) return;
+  const database = await openDatabase();
+  const transaction = database.transaction(FOLDER_STORE, 'readwrite');
+  const store = transaction.objectStore(FOLDER_STORE);
+  for (const id of ids) store.delete(id);
+  await new Promise<void>((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error('Could not remove folders.'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('The folder removal was aborted.'));
+  });
+}
+
+export async function removeNotes(ids: readonly string[]): Promise<void> {
+  if (!ids.length) return;
+  const database = await openDatabase();
+  const transaction = database.transaction(STORE, 'readwrite');
+  const store = transaction.objectStore(STORE);
+  for (const id of ids) store.delete(id);
+  await new Promise<void>((resolve, reject) => {
+    transaction.oncomplete = () => resolve();
+    transaction.onerror = () => reject(transaction.error ?? new Error('Could not delete notes.'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('The note delete was aborted.'));
   });
 }
 

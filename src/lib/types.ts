@@ -43,6 +43,17 @@ export interface Stroke {
   createdAt: number;
 }
 
+export interface NoteFolder {
+  id: string;
+  name: string;
+  parentId: string | null;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export type FolderFilter = 'all' | 'uncategorized' | string;
+export type NoteExportFormat = 'pdf' | 'markdown' | 'png' | 'svg' | 'editable';
+
 export interface NoteImage {
   id: string;
   /** Data URL. Small raster imports are normalised to WebP; SVG is preserved. */
@@ -78,6 +89,8 @@ export interface Note {
   sourcePath?: string;
   /** Small image attachments referenced by the Markdown, as data URLs. */
   assets?: Record<string, string>;
+  /** Folder in the note library; absent/null means uncategorized. */
+  folderId?: string | null;
   strokes: Stroke[];
   /** Images placed directly on the canvas (not Markdown embeds). */
   images?: NoteImage[];

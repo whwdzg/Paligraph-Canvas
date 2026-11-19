@@ -1,8 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createId } from '../lib/strokes';
-import { loadNotes, removeNote, saveNote, saveNotes } from '../lib/storage';
+import { collectFolderIds, uniqueFolderName } from '../lib/folders';
+import {
+  loadFolders,
+  loadNotes,
+  removeFolders,
+  removeNote,
+  removeNotes,
+  saveFolders,
+  saveNote,
+  saveNotes,
+} from '../lib/storage';
 import { generateThumbnail } from '../lib/thumbnail';
-import type { Note } from '../lib/types';
+import type { Note, NoteFolder } from '../lib/types';
 import { createWelcomeNote } from '../lib/welcome';
 import type { ResolvedTheme } from '../lib/renderer';
 
@@ -24,6 +34,7 @@ export interface NewNoteOptions {
   sourcePath?: string;
   assets?: Record<string, string>;
   background?: Note['background'];
+  folderId?: string | null;
 }
 
 function sortNotes(notes: Note[]): Note[] {
@@ -38,11 +49,13 @@ function sortNotes(notes: Note[]): Note[] {
  */
 export function useNotes(t: Translate, theme: ResolvedTheme) {
   const [notes, setNotes] = useState<Note[]>([]);
+  const [folders, setFolders] = useState<NoteFolder[]>([]);
   const [activeId, setActiveIdState] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [fatalError, setFatalError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('saved');
   const notesRef = useRef<Note[]>([]);
+  const foldersRef = useRef<NoteFolder[]>([]);
   const tRef = useRef(t);
   const themeRef = useRef(theme);
   const timers = useRef(new Map<string, number>());
@@ -55,6 +68,11 @@ export function useNotes(t: Translate, theme: ResolvedTheme) {
   const commit = useCallback((next: Note[]) => {
     notesRef.current = next;
     setNotes(next);
+  }, []);
+
+  const commitFolders = useCallback((next: NoteFolder[]) => {
+    foldersRef.current = next;
+    setFolders(next);
   }, []);
 
   const updateActive = useCallback((id: string | null) => {
@@ -134,7 +152,8 @@ export function useNotes(t: Translate, theme: ResolvedTheme) {
     let cancelled = false;
     const load = async (): Promise<void> => {
       try {
-        let stored = await loadNotes();
+        const [loadedNotes, loadedFolders] = await Promise.all([loadNotes(), loadFolders()]);
+        let stored = loadedNotes;
         if (!stored.length) {
           const welcome = await refreshThumbnail(createWelcomeNote(tRef.current('welcome.title')));
           await saveNote(welcome);
@@ -152,6 +171,7 @@ export function useNotes(t: Translate, theme: ResolvedTheme) {
           await saveNotes(stored.filter((note) => note.thumbnail));
         }
         if (cancelled) return;
+        commitFolders(loadedFolders);
         commit(sortNotes(stored));
         let remembered: string | null = null;
         try {
@@ -171,7 +191,7 @@ export function useNotes(t: Translate, theme: ResolvedTheme) {
     return () => {
       cancelled = true;
     };
-  }, [commit, refreshThumbnail, updateActive]);
+  }, [commit, commitFolders, refreshThumbnail, updateActive]);
 
   // Persist pending edits when the tab is hidden or closed. IndexedDB writes
   // are asynchronous, so this is best-effort by design; normal edits are
@@ -227,6 +247,7 @@ export function useNotes(t: Translate, theme: ResolvedTheme) {
         markdown: options.markdown ?? '',
         sourcePath: options.sourcePath,
         assets: options.assets,
+        folderId: options.folderId ?? null,
         strokes: [],
         images: [],
         background: options.background ?? {
@@ -248,6 +269,172 @@ export function useNotes(t: Translate, theme: ResolvedTheme) {
       return note;
     },
     [commit, flush, updateActive],
+  );
+
+  const createFolder = useCallback(
+    (name: string, parentId: string | null = null): NoteFolder => {
+      const now = Date.now();
+      const parent = parentId && foldersRef.current.some((folder) => folder.id === parentId) ? parentId : null;
+      const folder: NoteFolder = {
+        id: createId('folder'),
+        name: uniqueFolderName(foldersRef.current, parent, name),
+        parentId: parent,
+        createdAt: now,
+        updatedAt: now,
+      };
+      commitFolders([...foldersRef.current, folder]);
+      void saveFolders([folder]).catch((error) => console.error('Could not save folder', error));
+      return folder;
+    },
+    [commitFolders],
+  );
+
+  const renameFolder = useCallback(
+    (id: string, name: string): void => {
+      const folder = foldersRef.current.find((item) => item.id === id);
+      if (!folder) return;
+      const updated: NoteFolder = {
+        ...folder,
+        name: uniqueFolderName(foldersRef.current, folder.parentId, name, folder.id),
+        updatedAt: Date.now(),
+      };
+      commitFolders(foldersRef.current.map((item) => (item.id === id ? updated : item)));
+      void saveFolders([updated]).catch((error) => console.error('Could not save folder', error));
+    },
+    [commitFolders],
+  );
+
+  const deleteFolder = useCallback(
+    async (id: string): Promise<string | null> => {
+      const folder = foldersRef.current.find((item) => item.id === id);
+      if (!folder) return null;
+      const ids = collectFolderIds(foldersRef.current, id);
+      const parentExists = folder.parentId && foldersRef.current.some((item) => item.id === folder.parentId);
+      const parentId = parentExists ? folder.parentId : null;
+      const affected = notesRef.current.filter((note) => note.folderId && ids.has(note.folderId));
+      if (affected.length) {
+        const next = notesRef.current.map((note) =>
+          note.folderId && ids.has(note.folderId) ? { ...note, folderId: parentId } : note,
+        );
+        commit(next);
+        void saveNotes(affected.map((note) => ({ ...note, folderId: parentId }))).catch((error) => {
+          console.error('Could not move notes out of folder', error);
+          setSaveStatus('error');
+        });
+      }
+      commitFolders(foldersRef.current.filter((item) => !ids.has(item.id)));
+      try {
+        await removeFolders([...ids]);
+      } catch (error) {
+        console.error('Could not delete folder', error);
+        setSaveStatus('error');
+      }
+      return parentId;
+    },
+    [commit, commitFolders],
+  );
+
+  /**
+   * Converts Obsidian's `A/B/C` paths into nested folders. Existing names are
+   * reused case-insensitively under the same parent, so re-importing a vault
+   * does not create duplicate trees.
+   */
+  const ensureFolders = useCallback(
+    (paths: readonly string[]): Map<string, string | null> => {
+      const result = new Map<string, string | null>();
+      const byParent = new Map<string, Map<string, string>>();
+      for (const folder of foldersRef.current) {
+        const key = folder.parentId ?? '';
+        const names = byParent.get(key) ?? new Map<string, string>();
+        names.set(folder.name.toLocaleLowerCase(), folder.id);
+        byParent.set(key, names);
+      }
+      const created: NoteFolder[] = [];
+      const ensurePath = (raw: string): string | null => {
+        const parts = raw.split('/').map((part) => part.trim()).filter(Boolean);
+        let parentId: string | null = null;
+        for (const part of parts) {
+          const key: string = parentId ?? '';
+          const names: Map<string, string> = byParent.get(key) ?? new Map<string, string>();
+          const existing: string | undefined = names.get(part.toLocaleLowerCase());
+          if (existing) {
+            parentId = existing;
+            continue;
+          }
+          const now = Date.now();
+          const folder: NoteFolder = {
+            id: createId('folder'),
+            name: uniqueFolderName(foldersRef.current, parentId, part),
+            parentId,
+            createdAt: now,
+            updatedAt: now,
+          };
+          foldersRef.current = [...foldersRef.current, folder];
+          created.push(folder);
+          names.set(folder.name.toLocaleLowerCase(), folder.id);
+          byParent.set(key, names);
+          parentId = folder.id;
+        }
+        return parentId;
+      };
+      for (const path of paths) {
+        const key = path.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+        if (!result.has(key)) result.set(key, ensurePath(key));
+      }
+      if (created.length) {
+        setFolders(foldersRef.current);
+        void saveFolders(created).catch((error) => {
+          console.error('Could not save imported folders', error);
+          setSaveStatus('error');
+        });
+      }
+      return result;
+    },
+    [],
+  );
+
+  const moveNotes = useCallback(
+    (ids: readonly string[], folderId: string | null): number => {
+      const target = folderId && foldersRef.current.some((folder) => folder.id === folderId) ? folderId : null;
+      const selected = new Set(ids);
+      const changed = notesRef.current.filter((note) => selected.has(note.id) && (note.folderId ?? null) !== target);
+      if (!changed.length) return 0;
+      const next = notesRef.current.map((note) =>
+        selected.has(note.id) ? { ...note, folderId: target } : note,
+      );
+      commit(next);
+      void saveNotes(changed.map((note) => ({ ...note, folderId: target }))).catch((error) => {
+        console.error('Could not move notes', error);
+        setSaveStatus('error');
+      });
+      return changed.length;
+    },
+    [commit],
+  );
+
+  const deleteNotes = useCallback(
+    async (ids: readonly string[]): Promise<number> => {
+      const selected = new Set(ids);
+      if (!selected.size) return 0;
+      for (const id of selected) {
+        const timer = timers.current.get(id);
+        if (timer) window.clearTimeout(timer);
+        timers.current.delete(id);
+      }
+      const remaining = notesRef.current.filter((note) => !selected.has(note.id));
+      commit(remaining);
+      if (activeIdRef.current && selected.has(activeIdRef.current)) {
+        updateActive(remaining[0]?.id ?? null);
+      }
+      try {
+        await removeNotes([...selected]);
+      } catch (error) {
+        console.error('Could not delete notes', error);
+        setSaveStatus('error');
+      }
+      return selected.size;
+    },
+    [commit, updateActive],
   );
 
   const importNotes = useCallback(
@@ -338,6 +525,7 @@ export function useNotes(t: Translate, theme: ResolvedTheme) {
 
   return {
     notes,
+    folders,
     activeNote,
     activeId,
     loading,
@@ -345,6 +533,12 @@ export function useNotes(t: Translate, theme: ResolvedTheme) {
     saveStatus,
     selectNote,
     createNote,
+    createFolder,
+    renameFolder,
+    deleteFolder,
+    ensureFolders,
+    moveNotes,
+    deleteNotes,
     importNotes,
     updateNote,
     patchNote,

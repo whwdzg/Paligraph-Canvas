@@ -2,6 +2,29 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.4.0] — 2026-11-20
+
+### Note library: folders and multi-select
+
+- Nested folders with create, rename and delete. Deleting a folder moves its notes and subfolder contents to the parent instead of deleting them.
+- Folder tree with counts, collapse/expand, and automatic expansion of imported hierarchies.
+- New notes are created inside the currently selected folder.
+- Multi-select mode in the note list: toggle notes, select all visible notes, bulk move to a folder, or bulk delete with confirmation.
+- Note three-dot menu now includes Move to folder and exports for PDF, Markdown, PNG, SVG and `.paligraph`.
+- IndexedDB upgraded to schema version 2 with a separate `folders` object store; existing notes migrate transparently.
+
+### Obsidian and LaTeX
+
+- Obsidian/Markdown imports retain their original relative directory paths and create the corresponding nested folders, reusing existing names on re-import.
+- Markdown reading cards render LaTeX via KaTeX: `$...$`, `$$...$$`, `\(...\)` and `\[...\]`, with code blocks and inline code excluded.
+- KaTeX and its CSS/fonts load only with the lazy Markdown renderer.
+
+### Internal
+
+- Added `folders.ts`, folder dialogs, bulk selection UI and folder-aware storage helpers.
+- Added unit tests for folder trees, Obsidian folder paths and KaTeX output (56 total).
+- Bumped package/app version to 1.4.0.
+
 ## [1.3.0] — 2026-11-20
 
 ### Storage usage

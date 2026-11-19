@@ -15,6 +15,8 @@ import { EmptyCanvasHint } from './components/editor/EmptyCanvasHint';
 import { SourcePanel } from './components/editor/SourcePanel';
 import { ImagePreviewDialog } from './components/editor/ImagePreviewDialog';
 import { NoteSidebar } from './components/sidebar/NoteSidebar';
+import { FolderNameDialog } from './components/sidebar/FolderNameDialog';
+import { MoveToFolderDialog } from './components/sidebar/MoveToFolderDialog';
 import { SettingsDialog } from './components/settings/SettingsDialog';
 import { ConfirmDialog } from './components/common/ConfirmDialog';
 import { ToastHost } from './components/common/ToastHost';
@@ -25,7 +27,18 @@ import { useToasts } from './hooks/useToasts';
 import { useClickOutside } from './hooks/useClickOutside';
 import { prepareImageFile, type PreparedImage } from './lib/media';
 import { parseEditableNoteJson, type ImportedNote } from './lib/editable';
-import type { BackgroundSettings, InkTool, Note, Selection, Settings, Stroke } from './lib/types';
+import { collectFolderIds, folderPathName } from './lib/folders';
+import type {
+  BackgroundSettings,
+  FolderFilter,
+  InkTool,
+  Note,
+  NoteExportFormat,
+  NoteFolder,
+  Selection,
+  Settings,
+  Stroke,
+} from './lib/types';
 import type { ImportedMarkdownNote } from './lib/obsidian';
 import { useSettingsStore } from './state/settings';
 
@@ -118,6 +131,18 @@ export default function App() {
   const [backgroundOpen, setBackgroundOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<Note | null>(null);
+  const [folderFilter, setFolderFilter] = useState<FolderFilter>('all');
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedNoteIds, setSelectedNoteIds] = useState<Set<string>>(new Set());
+  const [folderDialog, setFolderDialog] = useState<{
+    mode: 'create' | 'rename';
+    parentId: string | null;
+    folder?: NoteFolder;
+    initialName: string;
+  } | null>(null);
+  const [moveRequest, setMoveRequest] = useState<{ ids: string[] } | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [folderToDelete, setFolderToDelete] = useState<NoteFolder | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
   const [hintDismissed, setHintDismissed] = useState(false);
   const [fatalDismissed, setFatalDismissed] = useState(false);
@@ -131,6 +156,23 @@ export default function App() {
   const backgroundPanelRef = useRef<HTMLDivElement>(null);
   const backgroundButtonRef = useRef<HTMLButtonElement>(null);
   const lastSaveErrorRef = useRef(false);
+
+  useEffect(() => {
+    if (folderFilter === 'all' || folderFilter === 'uncategorized') return;
+    if (!store.folders.some((folder) => folder.id === folderFilter)) {
+      setFolderFilter('all');
+      setSelectionMode(false);
+      setSelectedNoteIds(new Set());
+    }
+  }, [folderFilter, store.folders]);
+
+  useEffect(() => {
+    setSelectedNoteIds((previous) => {
+      const valid = new Set(store.notes.map((note) => note.id));
+      const next = new Set([...previous].filter((id) => valid.has(id)));
+      return next.size === previous.size ? previous : next;
+    });
+  }, [store.notes]);
 
   const activeNote = store.activeNote;
   const noteId = activeNote?.id;
@@ -207,13 +249,18 @@ export default function App() {
   const createNote = useCallback(() => {
     closeFloatingSurfaces();
     setSelection(null);
+    const targetFolder =
+      folderFilter !== 'all' && folderFilter !== 'uncategorized' && store.folders.some((folder) => folder.id === folderFilter)
+        ? folderFilter
+        : null;
     const note = store.createNote({
       title: t('note.untitled'),
       background: { ...settings.defaultBackground },
+      folderId: targetFolder,
     });
     if (note) setSidebarOpen(false);
     showToast(t('toast.noteCreated'), 'success');
-  }, [closeFloatingSurfaces, settings.defaultBackground, showToast, store, t]);
+  }, [closeFloatingSurfaces, folderFilter, settings.defaultBackground, showToast, store, t]);
 
   // The PWA shortcut uses ?new=1; consume it once so a refresh doesn't keep
   // creating notes.
@@ -331,97 +378,75 @@ export default function App() {
     if (next) setInspector(null);
   }, []);
 
-  const handleExportPdf = async () => {
-    if (!activeNote || exporting) return;
+  const handleExportNote = async (note: Note, format: NoteExportFormat): Promise<void> => {
+    if (!note || exporting) return;
     setExporting(true);
-    store.flush(activeNote.id);
+    store.flush(note.id);
     try {
-      const { exportPdf } = await import('./lib/exporters');
-      const result = await exportPdf(activeNote, {
-        inkHeading: t('export.inkHeading'),
-        page: t('export.page'),
-        createdWith: t('export.createdWith'),
-        emptyNote: t('export.emptyNote'),
-      });
-      showToast(t('export.pdfDone', { pages: result.pages }), 'success');
+      const {
+        exportPdf,
+        exportMarkdownFile,
+        exportPngFile,
+        exportSvgFile,
+        exportEditableFile,
+      } = await import('./lib/exporters');
+      if (format === 'pdf') {
+        const result = await exportPdf(note, {
+          inkHeading: t('export.inkHeading'),
+          page: t('export.page'),
+          createdWith: t('export.createdWith'),
+          emptyNote: t('export.emptyNote'),
+        });
+        showToast(t('export.pdfDone', { pages: result.pages }), 'success');
+      } else if (format === 'markdown') {
+        await exportMarkdownFile(note, {
+          inkHeading: t('export.inkHeading'),
+          page: t('export.page'),
+          createdWith: t('export.createdWith'),
+          emptyNote: t('export.emptyNote'),
+        });
+        showToast(t('export.markdownDone'), 'success');
+      } else if (format === 'png') {
+        await exportPngFile(note);
+        showToast(t('export.pngDone'), 'success');
+      } else if (format === 'svg') {
+        exportSvgFile(note);
+        showToast(t('export.svgDone'), 'success');
+      } else {
+        exportEditableFile(note);
+        showToast(t('export.editableDone'), 'success');
+      }
     } catch (error) {
       console.error(error);
       showToast(t('export.failed'), 'error');
     } finally {
       setExporting(false);
-    }
-  };
-
-  const handleExportMarkdown = async () => {
-    if (!activeNote) return;
-    try {
-      const { exportMarkdownFile } = await import('./lib/exporters');
-      await exportMarkdownFile(activeNote, {
-        inkHeading: t('export.inkHeading'),
-        page: t('export.page'),
-        createdWith: t('export.createdWith'),
-        emptyNote: t('export.emptyNote'),
-      });
-      showToast(t('export.markdownDone'), 'success');
-    } catch (error) {
-      console.error(error);
-      showToast(t('export.failed'), 'error');
-    }
-  };
-
-  const handleExportPng = async () => {
-    if (!activeNote || exporting) return;
-    setExporting(true);
-    store.flush(activeNote.id);
-    try {
-      const { exportPngFile } = await import('./lib/exporters');
-      await exportPngFile(activeNote);
-      showToast(t('export.pngDone'), 'success');
-    } catch (error) {
-      console.error(error);
-      showToast(t('export.failed'), 'error');
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const handleExportSvg = async () => {
-    if (!activeNote) return;
-    try {
-      const { exportSvgFile } = await import('./lib/exporters');
-      exportSvgFile(activeNote);
-      showToast(t('export.svgDone'), 'success');
-    } catch (error) {
-      console.error(error);
-      showToast(t('export.failed'), 'error');
-    }
-  };
-
-  const handleExportEditable = async () => {
-    if (!activeNote) return;
-    try {
-      const { exportEditableFile } = await import('./lib/exporters');
-      exportEditableFile(activeNote);
-      showToast(t('export.editableDone'), 'success');
-    } catch (error) {
-      console.error(error);
-      showToast(t('export.failed'), 'error');
     }
   };
 
   const handleImport = (notes: ImportedMarkdownNote[]) => {
+    const paths = [...new Set(notes.map((note) => note.folderPath).filter(Boolean))];
+    const folderMap = store.ensureFolders(paths);
+    const fallbackFolder =
+      folderFilter !== 'all' && folderFilter !== 'uncategorized' && store.folders.some((folder) => folder.id === folderFilter)
+        ? folderFilter
+        : null;
     const created = store.importNotes(
       notes.map((note) => ({
         title: note.title,
         markdown: note.markdown,
         sourcePath: note.sourcePath,
         assets: note.assets,
+        folderId: note.folderPath ? folderMap.get(note.folderPath) ?? null : fallbackFolder,
         strokes: [],
         background: { ...settings.defaultBackground },
       })),
     );
     setImportOpen(false);
     setSidebarOpen(false);
+    setFolderFilter('all');
+    setSelectionMode(false);
+    setSelectedNoteIds(new Set());
     showToast(t('import.done', { count: created.length }), 'success');
   };
 
@@ -448,6 +473,93 @@ export default function App() {
     void store.deleteNote(noteToDelete.id);
     setNoteToDelete(null);
     showToast(t('toast.noteDeleted'), 'neutral');
+  };
+
+  const handleFolderSelect = (id: FolderFilter): void => {
+    setFolderFilter(id);
+    setSelectionMode(false);
+    setSelectedNoteIds(new Set());
+    const visible =
+      id === 'all'
+        ? store.notes
+        : id === 'uncategorized'
+          ? store.notes.filter((note) => !note.folderId)
+          : store.notes.filter((note) => note.folderId === id);
+    if (store.activeId && !visible.some((note) => note.id === store.activeId) && visible.length) {
+      store.selectNote(visible[0].id);
+    }
+  };
+
+  const toggleSelected = (id: string): void => {
+    setSelectedNoteIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSelectionModeChange = (active: boolean): void => {
+    setSelectionMode(active);
+    if (!active) setSelectedNoteIds(new Set());
+  };
+
+  const handleDeleteSelected = (): void => {
+    if (!selectedNoteIds.size) return;
+    setBulkDeleteOpen(true);
+  };
+
+  const confirmDeleteSelected = async (): Promise<void> => {
+    const ids = [...selectedNoteIds];
+    const count = await store.deleteNotes(ids);
+    setBulkDeleteOpen(false);
+    setSelectionMode(false);
+    setSelectedNoteIds(new Set());
+    showToast(t('toast.notesDeleted', { count }), 'neutral');
+  };
+
+  const handleMoveToFolder = (targetFolderId: string | null): void => {
+    if (!moveRequest) return;
+    const count = store.moveNotes(moveRequest.ids, targetFolderId);
+    setMoveRequest(null);
+    setSelectionMode(false);
+    setSelectedNoteIds(new Set());
+    if (count) showToast(t('toast.notesMoved', { count }), 'success');
+  };
+
+  const openCreateFolder = (parentId: string | null): void => {
+    setFolderDialog({ mode: 'create', parentId, initialName: '' });
+  };
+
+  const openRenameFolder = (folder: NoteFolder): void => {
+    setFolderDialog({
+      mode: 'rename',
+      parentId: folder.parentId,
+      folder,
+      initialName: folder.name,
+    });
+  };
+
+  const submitFolderName = (name: string): void => {
+    if (!folderDialog) return;
+    if (folderDialog.mode === 'rename' && folderDialog.folder) {
+      store.renameFolder(folderDialog.folder.id, name);
+      showToast(t('toast.folderRenamed'), 'success');
+      return;
+    }
+    store.createFolder(name, folderDialog.parentId);
+    showToast(t('toast.folderCreated'), 'success');
+  };
+
+  const confirmDeleteFolder = async (): Promise<void> => {
+    if (!folderToDelete) return;
+    const removed = collectFolderIds(store.folders, folderToDelete.id);
+    const parentId = await store.deleteFolder(folderToDelete.id);
+    if (removed.has(folderFilter)) setFolderFilter(parentId ?? 'uncategorized');
+    setFolderToDelete(null);
+    setSelectionMode(false);
+    setSelectedNoteIds(new Set());
+    showToast(t('toast.folderDeleted'), 'neutral');
   };
 
   const handleSourceApply = (markdown: string) => {
@@ -488,8 +600,11 @@ export default function App() {
     <div className={`app-shell ${sidebarOpen ? 'sidebar-open' : ''}`.trim()}>
       <NoteSidebar
         notes={store.notes}
+        folders={store.folders}
         activeId={store.activeId}
         open={sidebarOpen}
+        folderId={folderFilter}
+        onFolderSelect={handleFolderSelect}
         onClose={() => setSidebarOpen(false)}
         onSelect={(id) => {
           store.selectNote(id);
@@ -501,6 +616,18 @@ export default function App() {
           setSidebarOpen(false);
         }}
         onDeleteRequest={setNoteToDelete}
+        onMoveNote={(note) => setMoveRequest({ ids: [note.id] })}
+        onExportNote={(note, format) => void handleExportNote(note, format)}
+        onCreateFolder={openCreateFolder}
+        onRenameFolder={openRenameFolder}
+        onDeleteFolder={setFolderToDelete}
+        selectionMode={selectionMode}
+        selectedIds={selectedNoteIds}
+        onSelectionModeChange={handleSelectionModeChange}
+        onToggleSelected={toggleSelected}
+        onSelectAll={(ids) => setSelectedNoteIds(new Set(ids))}
+        onDeleteSelected={handleDeleteSelected}
+        onMoveSelected={() => setMoveRequest({ ids: [...selectedNoteIds] })}
       />
 
       <main className="editor-shell">
@@ -527,11 +654,11 @@ export default function App() {
                 closeFloatingSurfaces();
                 setSettingsOpen(true);
               }}
-              onExportPdf={() => void handleExportPdf()}
-              onExportMarkdown={() => void handleExportMarkdown()}
-              onExportPng={() => void handleExportPng()}
-              onExportSvg={() => void handleExportSvg()}
-              onExportEditable={() => void handleExportEditable()}
+              onExportPdf={() => void handleExportNote(activeNote, 'pdf')}
+              onExportMarkdown={() => void handleExportNote(activeNote, 'markdown')}
+              onExportPng={() => void handleExportNote(activeNote, 'png')}
+              onExportSvg={() => void handleExportNote(activeNote, 'svg')}
+              onExportEditable={() => void handleExportNote(activeNote, 'editable')}
               onNewNote={createNote}
             />
 
@@ -672,9 +799,50 @@ export default function App() {
           open={sourceOpen}
           onClose={() => setSourceOpen(false)}
           onApply={handleSourceApply}
-          onExport={() => void handleExportMarkdown()}
+          onExport={() => void handleExportNote(activeNote, 'markdown')}
         />
       ) : null}
+
+      <FolderNameDialog
+        open={Boolean(folderDialog)}
+        mode={folderDialog?.mode ?? 'create'}
+        initialName={folderDialog?.initialName ?? ''}
+        parentPath={folderDialog ? folderPathName(store.folders, folderDialog.parentId) : ''}
+        onClose={() => setFolderDialog(null)}
+        onSubmit={submitFolderName}
+      />
+
+      <MoveToFolderDialog
+        open={Boolean(moveRequest)}
+        folders={store.folders}
+        count={moveRequest?.ids.length ?? 0}
+        onClose={() => setMoveRequest(null)}
+        onMove={handleMoveToFolder}
+      />
+
+      <ConfirmDialog
+        open={bulkDeleteOpen}
+        title={t('selection.deleteTitle')}
+        body={t('selection.deleteBody', { count: selectedNoteIds.size })}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        closeLabel={t('common.close')}
+        danger
+        onConfirm={() => void confirmDeleteSelected()}
+        onClose={() => setBulkDeleteOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={Boolean(folderToDelete)}
+        title={t('folder.deleteTitle')}
+        body={t('folder.deleteBody', { name: folderToDelete?.name ?? '' })}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        closeLabel={t('common.close')}
+        danger
+        onConfirm={() => void confirmDeleteFolder()}
+        onClose={() => setFolderToDelete(null)}
+      />
 
       <ConfirmDialog
         open={Boolean(noteToDelete)}

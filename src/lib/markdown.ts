@@ -1,5 +1,7 @@
 import DOMPurify from 'dompurify';
+import katex from 'katex';
 import { marked } from 'marked';
+import 'katex/dist/katex.min.css';
 
 /**
  * Markdown is imported from arbitrary Obsidian vaults, so rendering goes
@@ -66,6 +68,77 @@ export function normalizeObsidianMarkdown(source: string, assets: ReadonlyMap<st
   return text.replace(/\n{4,}/g, '\n\n\n');
 }
 
+const MATH_SKIP_TAGS = new Set(['CODE', 'PRE', 'SCRIPT', 'STYLE', 'TEXTAREA']);
+const MATH_PATTERN = /\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|(?<!\$)\$(?![\s$])([^\n$]*?[^\s$])\$(?!\$)/g;
+
+/** KaTeX's trusted, script-free output (user macros are not enabled). */
+export function renderLatexToHtml(expression: string, displayMode = false): string {
+  return katex.renderToString(expression.trim(), {
+    displayMode,
+    throwOnError: false,
+    strict: 'ignore',
+    trust: false,
+    output: 'htmlAndMathml',
+  });
+}
+
+function sanitizeMathHtml(html: string): string {
+  return DOMPurify.sanitize(html, {
+    USE_PROFILES: { html: true, mathMl: true },
+    ADD_ATTR: ['style', 'aria-hidden'],
+    FORBID_TAGS: ['style', 'iframe', 'form', 'button', 'textarea', 'select', 'video', 'audio', 'script'],
+  });
+}
+
+function replaceMathInText(documentFragment: Document, text: string): DocumentFragment | null {
+  const regex = new RegExp(MATH_PATTERN.source, 'g');
+  let match: RegExpExecArray | null;
+  let last = 0;
+  const fragment = documentFragment.createDocumentFragment();
+  let found = false;
+  while ((match = regex.exec(text))) {
+    found = true;
+    if (match.index > last) fragment.append(documentFragment.createTextNode(text.slice(last, match.index)));
+    const display = match[1] !== undefined || match[2] !== undefined;
+    const expression = match[1] ?? match[2] ?? match[3] ?? match[4] ?? '';
+    const wrapper = documentFragment.createElement('span');
+    wrapper.className = display ? 'math-display' : 'math-inline';
+    try {
+      wrapper.innerHTML = sanitizeMathHtml(renderLatexToHtml(expression, display));
+    } catch {
+      wrapper.textContent = match[0];
+    }
+    fragment.append(wrapper);
+    last = regex.lastIndex;
+  }
+  if (!found) return null;
+  if (last < text.length) fragment.append(documentFragment.createTextNode(text.slice(last)));
+  return fragment;
+}
+
+function renderMathInDocument(documentFragment: Document): void {
+  const walker = documentFragment.createTreeWalker(documentFragment.body, 4);
+  const textNodes: Text[] = [];
+  let node = walker.nextNode();
+  while (node) {
+    const parent = node.parentElement;
+    if (
+      node.nodeType === 3 &&
+      node.nodeValue &&
+      (node.nodeValue.includes('$') || node.nodeValue.includes('\\(') || node.nodeValue.includes('\\[')) &&
+      !MATH_SKIP_TAGS.has(parent?.tagName ?? '') &&
+      !parent?.closest('.katex')
+    ) {
+      textNodes.push(node as Text);
+    }
+    node = walker.nextNode();
+  }
+  for (const textNode of textNodes) {
+    const replacement = replaceMathInText(documentFragment, textNode.nodeValue ?? '');
+    if (replacement) textNode.replaceWith(replacement);
+  }
+}
+
 export function markdownToHtml(source: string, assets: ReadonlyMap<string, string> = new Map()): string {
   const normalized = normalizeObsidianMarkdown(source, assets);
   const rendered = marked.parse(normalized, { async: false }) as string;
@@ -100,7 +173,15 @@ export function markdownToHtml(source: string, assets: ReadonlyMap<string, strin
     placeholder.textContent = image.alt ? `[Image: ${image.alt}]` : '[Image unavailable]';
     image.replaceWith(placeholder);
   }
-  return documentFragment.body.innerHTML;
+  renderMathInDocument(documentFragment);
+  // The first pass stripped all style attributes. The second pass allows them
+  // only for KaTeX's generated layout markup, which was sanitised separately.
+  return DOMPurify.sanitize(documentFragment.body.innerHTML, {
+    USE_PROFILES: { html: true, mathMl: true },
+    ADD_ATTR: ['target', 'rel', 'loading', 'decoding', 'disabled', 'checked', 'style'],
+    FORBID_TAGS: ['style', 'iframe', 'form', 'button', 'textarea', 'select', 'video', 'audio', 'script'],
+    FORBID_ATTR: ['srcset'],
+  });
 }
 
 export function markdownExcerpt(source: string, length = 140): string {
