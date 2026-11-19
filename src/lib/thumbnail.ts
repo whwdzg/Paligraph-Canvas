@@ -1,4 +1,12 @@
-import { fitView, renderScene, visibleInkBounds, type ResolvedTheme } from './renderer';
+import {
+  fitView,
+  renderBackgroundLayer,
+  renderInk,
+  visibleInkBounds,
+  type ResolvedTheme,
+} from './renderer';
+import { drawNoteImage, ensureImage, imageBounds } from './media';
+import { unionBounds } from './geometry';
 import type { Note } from './types';
 
 /**
@@ -204,11 +212,12 @@ export async function generateThumbnail(note: Note, theme: ResolvedTheme): Promi
       canvas = document.createElement('canvas');
       canvas.width = THUMBNAIL_WIDTH;
       canvas.height = THUMBNAIL_HEIGHT;
-      const inkBounds = visibleInkBounds(note.strokes.filter((stroke) => stroke.tool !== 'eraser'));
-      const view = inkBounds
-        ? fitView(inkBounds, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT, 34, 1.2, 0.08)
+      let contentBounds = visibleInkBounds(note.strokes.filter((stroke) => stroke.tool !== 'eraser'));
+      for (const image of note.images ?? []) contentBounds = unionBounds(contentBounds, imageBounds(image));
+      const view = contentBounds
+        ? fitView(contentBounds, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT, 34, 1.2, 0.08)
         : { scale: 0.4, x: THUMBNAIL_WIDTH / 2, y: THUMBNAIL_HEIGHT / 2 };
-      renderScene(canvas, {
+      const options = {
         width: THUMBNAIL_WIDTH,
         height: THUMBNAIL_HEIGHT,
         dpr: 1,
@@ -216,7 +225,25 @@ export async function generateThumbnail(note: Note, theme: ResolvedTheme): Promi
         background: note.background,
         theme,
         strokes: note.strokes,
-      });
+      };
+      renderBackgroundLayer(canvas, options);
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        for (const image of note.images ?? []) {
+          const element = await ensureImage(image.src);
+          if (!element) continue;
+          ctx.save();
+          ctx.translate(view.x, view.y);
+          ctx.scale(view.scale, view.scale);
+          drawNoteImage(ctx, image, element);
+          ctx.restore();
+        }
+        const inkCanvas = document.createElement('canvas');
+        inkCanvas.width = THUMBNAIL_WIDTH;
+        inkCanvas.height = THUMBNAIL_HEIGHT;
+        renderInk(inkCanvas, options);
+        ctx.drawImage(inkCanvas, 0, 0);
+      }
     }
     return canvas.toDataURL('image/webp', 0.74);
   } catch {

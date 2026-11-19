@@ -722,7 +722,9 @@
   top: calc(100% + 8px);
   right: 0;
   z-index: 80;
-  width: 268px;
+  width: 286px;
+  max-height: min(70vh, 470px);
+  overflow-y: auto;
   padding: 5px;
   border-radius: 13px;
   animation: menu-in 140ms var(--ease-swift);
@@ -790,6 +792,36 @@
 .export-icon.is-md {
   color: var(--accent);
   background: var(--accent-soft);
+}
+
+.export-icon.is-image {
+  color: #0f7b4f;
+  background: rgba(15, 123, 79, 0.1);
+}
+
+[data-theme="dark"] .export-icon.is-image {
+  color: #7be0b6;
+  background: rgba(123, 224, 182, 0.11);
+}
+
+.export-icon.is-svg {
+  color: #7357d8;
+  background: rgba(115, 87, 216, 0.11);
+}
+
+[data-theme="dark"] .export-icon.is-svg {
+  color: #c8b8ff;
+  background: rgba(200, 184, 255, 0.11);
+}
+
+.export-icon.is-editable {
+  color: #b7791f;
+  background: rgba(183, 121, 31, 0.11);
+}
+
+[data-theme="dark"] .export-icon.is-editable {
+  color: #ffd36b;
+  background: rgba(255, 211, 107, 0.1);
 }
 
 .header-new-note {
@@ -861,9 +893,10 @@
 
 .canvas-background { z-index: 0; }
 .markdown-card-anchor { position: absolute; z-index: 1; top: 0; left: 0; width: 780px; transform-origin: 0 0; will-change: transform; pointer-events: none; }
-.canvas-ink { z-index: 2; }
-.canvas-live { z-index: 3; }
-.canvas-overlay { z-index: 4; }
+.canvas-media { z-index: 2; }
+.canvas-ink { z-index: 3; }
+.canvas-live { z-index: 4; }
+.canvas-overlay { z-index: 5; }
 
 .canvas-context {
   position: absolute;

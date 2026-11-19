@@ -862,6 +862,10 @@
   gap: 10px;
 }
 
+.import-choice.is-wide {
+  grid-column: 1 / -1;
+}
+
 .import-choice {
   display: flex;
   align-items: flex-start;

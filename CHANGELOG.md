@@ -2,6 +2,31 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.2.0] — 2026-11-20
+
+### Canvas images
+
+- Insert PNG, JPEG, WebP, GIF and SVG into any existing note, including notes imported from Markdown/Obsidian.
+- Images are first-class canvas objects layered between the paper and ink: direct click or lasso selection, move, free rotation, 90° rotation, copy, duplicate, paste, delete and undo/redo.
+- Image operations share the document history with strokes, including undo after deletion and cross-note paste.
+- Raster images are normalised to WebP and capped at 2400 px on the long edge; SVG stays vector. Limits: 12 per batch, 40 per note, 18 MB per source file.
+- Note-list previews now render placed images as well as ink.
+
+### Export and import
+
+- Added **PNG** export of the canvas content at content bounds.
+- Added **SVG** export with vector strokes and shapes, embedded images, background patterns and pixel-eraser masks.
+- Added the **`.paligraph` editable note** format: lossless JSON containing Markdown, strokes, images, background and attachments.
+- The import dialog opens `.paligraph` files; the exported PNG/SVG can be inserted back as images.
+- PNG/SVG entries are lazily loaded from the export menu; editable files are pure local JSON.
+
+### Internal
+
+- Added `media.ts` (image import/normalisation, decode cache, transforms), `editable.ts` (validated lossless format) and an image layer in the canvas renderer.
+- History now snapshots both strokes and images.
+- Added 7 unit tests for editable files and image geometry (50 total).
+- Bumped package/app version to 1.2.0.
+
 ## [1.1.0] — 2026-11-20
 
 ### Shape correction

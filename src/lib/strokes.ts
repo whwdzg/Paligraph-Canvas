@@ -10,7 +10,8 @@ import {
   simplifyPoints,
   unionBounds,
 } from './geometry';
-import type { Bounds, EraserMode, InkPoint, PenVariant, Selection, Stroke } from './types';
+import { imageBounds, imageCenter, imageCorners } from './media';
+import type { Bounds, EraserMode, InkPoint, NoteImage, PenVariant, Selection, Stroke } from './types';
 
 /** Unique enough for local documents; no crypto dependency on older webviews. */
 export function createId(prefix = 's'): string {
@@ -113,11 +114,45 @@ export function boundsForStrokes(strokes: readonly Stroke[], ids?: ReadonlySet<s
   return bounds;
 }
 
-export function makeSelection(strokes: readonly Stroke[], ids: readonly string[]): Selection | null {
-  if (!ids.length) return null;
+export function boundsForImages(images: readonly NoteImage[], ids?: ReadonlySet<string>): Bounds | null {
+  let bounds: Bounds | null = null;
+  for (const image of images) {
+    if (ids && !ids.has(image.id)) continue;
+    bounds = unionBounds(bounds, imageBounds(image));
+  }
+  return bounds;
+}
+
+export function imagesInLasso(
+  images: readonly NoteImage[],
+  polygon: readonly InkPoint[],
+): string[] {
+  if (polygon.length < 3) return [];
+  const ids: string[] = [];
+  for (const image of images) {
+    const center = imageCenter(image);
+    if (pointInPolygon(center.x, center.y, polygon)) {
+      ids.push(image.id);
+      continue;
+    }
+    if (imageCorners(image).some((corner) => pointInPolygon(corner.x, corner.y, polygon))) {
+      ids.push(image.id);
+    }
+  }
+  return ids;
+}
+
+export function makeSelection(
+  strokes: readonly Stroke[],
+  ids: readonly string[],
+  images: readonly NoteImage[] = [],
+  imageIds: readonly string[] = [],
+): Selection | null {
+  if (!ids.length && !imageIds.length) return null;
   const selected = new Set(ids);
-  const bounds = boundsForStrokes(strokes, selected);
-  return bounds ? { ids: [...ids], bounds, rotation: 0 } : null;
+  const selectedImages = new Set(imageIds);
+  const bounds = unionBounds(boundsForStrokes(strokes, selected), boundsForImages(images, selectedImages));
+  return bounds ? { ids: [...ids], imageIds: [...imageIds], bounds, rotation: 0 } : null;
 }
 
 export function translateStroke(stroke: Stroke, dx: number, dy: number): Stroke {

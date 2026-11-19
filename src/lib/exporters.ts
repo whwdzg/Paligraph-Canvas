@@ -1,7 +1,18 @@
-import { fitView, renderScene, visibleInkBounds } from './renderer';
+import {
+  applyView,
+  drawBackground,
+  fitView,
+  prepareCanvas,
+  renderInk,
+  visibleInkBounds,
+} from './renderer';
 import { normalizeObsidianMarkdown } from './markdown';
 import { downloadBlob, safeFilename } from './download';
-import type { Note } from './types';
+import { drawNoteImage, ensureImage, imageBounds } from './media';
+import { unionBounds } from './geometry';
+import { serializeEditableNote } from './editable';
+import { strokeToPath } from './strokes';
+import type { Bounds, Note, Stroke } from './types';
 
 /**
  * Export pipeline.
@@ -23,10 +34,14 @@ export interface ExportLabels {
   emptyNote: string;
 }
 
-function inkCanvas(note: Note, maxEdge = 1600): HTMLCanvasElement | null {
-  const bounds = visibleInkBounds(note.strokes);
-  if (!bounds) return null;
-  const padding = 64;
+function contentBounds(note: Note): Bounds | null {
+  let bounds = visibleInkBounds(note.strokes);
+  for (const image of note.images ?? []) bounds = unionBounds(bounds, imageBounds(image));
+  return bounds;
+}
+
+async function contentCanvas(note: Note, maxEdge = 1800): Promise<HTMLCanvasElement> {
+  const bounds = contentBounds(note) ?? { minX: -600, minY: -400, maxX: 600, maxY: 400 };
   const aspect = Math.max(0.2, (bounds.maxX - bounds.minX) / Math.max(1, bounds.maxY - bounds.minY));
   let width = maxEdge;
   let height = Math.round(width / aspect);
@@ -34,13 +49,25 @@ function inkCanvas(note: Note, maxEdge = 1600): HTMLCanvasElement | null {
     height = maxEdge;
     width = Math.round(height * aspect);
   }
-  width = Math.max(420, width);
+  width = Math.max(480, width);
   height = Math.max(320, height);
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
-  const view = fitView(bounds, width, height, padding, 3, 0.05);
-  renderScene(canvas, {
+  const view = fitView(bounds, width, height, 64, 3, 0.05);
+  const ctx = prepareCanvas(canvas, width, height, 1);
+  drawBackground(ctx, note.background, 'light', view, width, height);
+  const images = await Promise.all((note.images ?? []).map(async (image) => ({ image, element: await ensureImage(image.src) })));
+  ctx.save();
+  applyView(ctx, view);
+  for (const { image, element } of images) {
+    if (element) drawNoteImage(ctx, image, element);
+  }
+  ctx.restore();
+  const inkCanvas = document.createElement('canvas');
+  inkCanvas.width = width;
+  inkCanvas.height = height;
+  renderInk(inkCanvas, {
     width,
     height,
     dpr: 1,
@@ -49,6 +76,7 @@ function inkCanvas(note: Note, maxEdge = 1600): HTMLCanvasElement | null {
     theme: 'light',
     strokes: note.strokes,
   });
+  ctx.drawImage(inkCanvas, 0, 0);
   return canvas;
 }
 
@@ -57,22 +85,23 @@ function canvasDataUrl(canvas: HTMLCanvasElement, type = 'image/png'): string {
 }
 
 /** Markdown source plus an embedded snapshot when the note also contains ink. */
-export function noteToMarkdown(note: Note, labels: ExportLabels): string {
+export async function noteToMarkdown(note: Note, labels: ExportLabels): Promise<string> {
   const parts: string[] = [];
   const source = note.markdown.trim();
   if (source) parts.push(source);
   else parts.push(`# ${note.title}`);
-  const drawing = inkCanvas(note, 1400);
-  if (drawing) {
+  const hasCanvas = Boolean(contentBounds(note));
+  if (hasCanvas) {
+    const drawing = await contentCanvas(note, 1400);
     parts.push(`\n\n---\n\n## ${labels.inkHeading}\n\n![${labels.inkHeading}](${canvasDataUrl(drawing)})`);
   }
-  if (!source && !drawing) parts.push(`\n\n_${labels.emptyNote}_`);
+  if (!source && !hasCanvas) parts.push(`\n\n_${labels.emptyNote}_`);
   parts.push(`\n\n<!-- ${labels.createdWith} · Paligraph Canvas -->\n`);
   return parts.join('');
 }
 
-export function exportMarkdownFile(note: Note, labels: ExportLabels): void {
-  const blob = new Blob([noteToMarkdown(note, labels)], { type: 'text/markdown;charset=utf-8' });
+export async function exportMarkdownFile(note: Note, labels: ExportLabels): Promise<void> {
+  const blob = new Blob([await noteToMarkdown(note, labels)], { type: 'text/markdown;charset=utf-8' });
   downloadBlob(safeFilename(note.title, 'md'), blob);
 }
 
@@ -401,6 +430,103 @@ export interface PdfExportResult {
   filename: string;
 }
 
+/* ----------------------------------------------------------- PNG/SVG/editable */
+
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function shapePathData(stroke: Stroke): string {
+  if (!stroke.points.length) return '';
+  const points = stroke.points;
+  const closed = stroke.shape === 'rectangle' || stroke.shape === 'triangle' || stroke.shape === 'ellipse';
+  return `${points.map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(' ')}${closed ? ' Z' : ''}`;
+}
+
+export async function exportPngFile(note: Note): Promise<void> {
+  const canvas = await contentCanvas(note, 2600);
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+  if (!blob) throw new Error('Could not encode PNG.');
+  downloadBlob(safeFilename(note.title, 'png'), blob);
+}
+
+/** Vector export for the canvas content. Pixel erasers become an SVG mask. */
+export function exportSvgFile(note: Note): void {
+  const bounds = contentBounds(note) ?? { minX: -600, minY: -400, maxX: 600, maxY: 400 };
+  const padding = 64;
+  const minX = bounds.minX - padding;
+  const minY = bounds.minY - padding;
+  const width = Math.max(1, bounds.maxX - bounds.minX + padding * 2);
+  const height = Math.max(1, bounds.maxY - bounds.minY + padding * 2);
+  const displayWidth = Math.min(1800, Math.max(480, Math.round(width)));
+  const displayHeight = Math.max(1, Math.round((displayWidth / width) * height));
+  const bg = note.background;
+  const bgColor = bg.color || '#53657d';
+  const bgOpacity = Math.max(0, Math.min(0.6, bg.opacity));
+  const dash = bg.lineStyle === 'dashed' ? ' stroke-dasharray="4 6"' : '';
+  const spacing = Math.max(8, bg.spacing);
+  const pattern =
+    bg.pattern === 'blank'
+      ? ''
+      : `<pattern id="paperPattern" patternUnits="userSpaceOnUse" width="${spacing}" height="${spacing}">` +
+        (bg.pattern === 'grid'
+          ? `<path d="M ${spacing} 0 L 0 0 0 ${spacing}" fill="none" stroke="${bgColor}" stroke-width="1"${dash}/>`
+          : bg.pattern === 'ruled'
+            ? `<path d="M 0 ${spacing} L ${spacing} ${spacing}" fill="none" stroke="${bgColor}" stroke-width="1"${dash}/>`
+            : `<circle cx="${spacing / 2}" cy="${spacing / 2}" r="1.3" fill="${bgColor}"/>`) +
+        `</pattern>`;
+  const background = `<rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="#fbfcff"/>` +
+    (pattern ? `<rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="url(#paperPattern)" opacity="${bgOpacity}"/>` : '');
+
+  const pixelErasers = note.strokes.filter((stroke) => stroke.tool === 'eraser');
+  const visibleStrokes = note.strokes.filter((stroke) => stroke.tool !== 'eraser');
+  const ink = visibleStrokes.map((stroke) => {
+    const path = stroke.shape ? shapePathData(stroke) : strokeToPath(stroke);
+    if (!path) return '';
+    const opacity = stroke.tool === 'highlighter' ? Math.min(0.55, stroke.opacity) : stroke.opacity;
+    return `<path d="${path}" fill="none" stroke="${escapeXml(stroke.color)}" stroke-width="${stroke.size.toFixed(2)}" stroke-opacity="${opacity}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }).join('');
+  const eraseMaskPaths = pixelErasers.map((stroke) => {
+    const path = shapePathData(stroke) || strokeToPath(stroke);
+    return path
+      ? `<path d="${path}" fill="none" stroke="#000" stroke-width="${stroke.size.toFixed(2)}" stroke-linecap="round" stroke-linejoin="round"/>`
+      : '';
+  }).join('');
+  const mask = pixelErasers.length
+    ? `<mask id="inkMask" maskUnits="userSpaceOnUse" x="${minX}" y="${minY}" width="${width}" height="${height}"><rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="#fff"/>${eraseMaskPaths}</mask>`
+    : '';
+  const inkGroup = ink
+    ? `<g ${pixelErasers.length ? 'mask="url(#inkMask)"' : ''}>${ink}</g>`
+    : '';
+  const images = (note.images ?? []).map((image) => {
+    const cx = image.x + image.width / 2;
+    const cy = image.y + image.height / 2;
+    const rotate = image.rotation ? ` transform="rotate(${((image.rotation * 180) / Math.PI).toFixed(3)} ${cx} ${cy})"` : '';
+    return `<image href="${escapeXml(image.src)}" x="${image.x}" y="${image.y}" width="${image.width}" height="${image.height}" preserveAspectRatio="none"${rotate}/>`;
+  }).join('');
+
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${displayWidth}" height="${displayHeight}" viewBox="${minX} ${minY} ${width} ${height}" role="img" aria-label="${escapeXml(note.title)}">
+<title>${escapeXml(note.title)}</title>
+<defs>${pattern}${mask}</defs>
+${background}
+${images}
+${inkGroup}
+</svg>
+`;
+  downloadBlob(safeFilename(note.title, 'svg'), new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
+}
+
+export function exportEditableFile(note: Note): void {
+  downloadBlob(
+    safeFilename(note.title, 'paligraph'),
+    new Blob([serializeEditableNote(note)], { type: 'application/json;charset=utf-8' }),
+  );
+}
+
 export async function exportPdf(note: Note, labels: ExportLabels): Promise<PdfExportResult> {
   const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4', compress: true });
@@ -414,7 +540,7 @@ export async function exportPdf(note: Note, labels: ExportLabels): Promise<PdfEx
     const blocks = parsePrintBlocks(source);
     page = drawBlocks(page, blocks, note, labels);
     pages.push(page.canvas);
-    const drawing = inkCanvas(note, 1700);
+    const drawing = contentBounds(note) ? await contentCanvas(note, 1700) : null;
     if (drawing) {
       let inkPage = addPage(page, `${note.title} — ${labels.inkHeading}`, labels);
       const availableWidth = PDF_WIDTH - PDF_MARGIN * 2;
@@ -432,7 +558,7 @@ export async function exportPdf(note: Note, labels: ExportLabels): Promise<PdfEx
     }
   } else {
     const page = newPage(note.title, labels);
-    const drawing = inkCanvas(note, 1800);
+    const drawing = contentBounds(note) ? await contentCanvas(note, 1800) : null;
     if (drawing) {
       const availableWidth = PDF_WIDTH - PDF_MARGIN * 2;
       const availableHeight = PDF_HEIGHT - 240;

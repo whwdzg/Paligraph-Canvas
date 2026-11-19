@@ -35,20 +35,32 @@ import {
 } from '../../lib/geometry';
 import {
   cloneStrokes,
+  createId,
   finishStroke,
   hitTestStroke,
+  imagesInLasso,
   makeSelection,
   strokeIntersectsEraser,
   strokeBounds,
   strokesInLasso,
 } from '../../lib/strokes';
 import { previewShapeStroke, recognizeShape, snapStrokeToShape, type ShapeFit } from '../../lib/shapes';
+import {
+  drawNoteImage,
+  ensureImage,
+  hitTestImage,
+  imageBounds,
+  imagePlaceholder,
+  transformImage,
+  type PreparedImage,
+} from '../../lib/media';
 import type {
   Bounds,
   HighlighterMode,
   InkPoint,
   InkTool,
   Note,
+  NoteImage,
   PenVariant,
   Selection,
   Settings,
@@ -70,13 +82,19 @@ const PASTEL_TOOLS: Record<PenVariant, { opacity: number }> = {
   brush: { opacity: 0.96 },
 };
 
+interface DocumentSnapshot {
+  strokes: Stroke[];
+  images: NoteImage[];
+}
+
 interface HistoryEntry {
-  before: Stroke[];
-  after: Stroke[];
+  before: DocumentSnapshot;
+  after: DocumentSnapshot;
 }
 
 interface DirtyFlags {
   background: boolean;
+  media: boolean;
   ink: boolean;
   live: boolean;
   overlay: boolean;
@@ -145,6 +163,7 @@ interface LivePreview {
 interface SelectionPreviewLive {
   kind: 'selection';
   strokes: Stroke[];
+  images: NoteImage[];
   preview: SelectionPreview;
   center: { x: number; y: number };
 }
@@ -178,6 +197,7 @@ export interface DrawingSurfaceHandle {
   duplicateSelection: () => void;
   rotateSelection: (degrees: number) => void;
   clearCanvas: () => void;
+  insertImages: (images: PreparedImage[]) => void;
   fitToContent: () => void;
   resetView: () => void;
   zoomIn: () => void;
@@ -194,6 +214,7 @@ interface DrawingSurfaceProps {
   gestureHint: string;
   hasInk: boolean;
   onStrokesChange: (strokes: Stroke[]) => void;
+  onImagesChange: (images: NoteImage[]) => void;
   onSelectionChange: (selection: Selection | null) => void;
   onHistoryChange: (state: { undo: boolean; redo: boolean }) => void;
   onViewScaleChange: (scale: number) => void;
@@ -204,7 +225,7 @@ interface DrawingSurfaceProps {
 }
 
 /** Session clipboard shared across note switches, following the user's intent. */
-let selectionClipboard: Stroke[] = [];
+let selectionClipboard: { strokes: Stroke[]; images: NoteImage[] } = { strokes: [], images: [] };
 
 /** Keeps four full-screen layers inside a sensible GPU/CPU memory budget. */
 function renderDpr(width: number, height: number): number {
@@ -220,8 +241,9 @@ function initialView(note: Note, width: number, height: number): ViewTransform {
     const scale = clamp((width - 132) / (CARD_WIDTH + 50), 0.36, 1.05);
     return { scale, x: width / 2, y: 72 + Math.abs(CARD_Y) * scale };
   }
-  const inkBounds = inkBoundsOf(note.strokes);
-  if (inkBounds) return fitView(inkBounds, width, height, Math.min(104, width * 0.12), 1.2, 0.12);
+  let contentBounds = inkBoundsOf(note.strokes);
+  for (const image of note.images ?? []) contentBounds = unionBounds(contentBounds, imageBounds(image));
+  if (contentBounds) return fitView(contentBounds, width, height, Math.min(104, width * 0.12), 1.2, 0.12);
   return { scale: 1, x: width / 2, y: height / 2 };
 }
 
@@ -286,6 +308,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     gestureHint,
     hasInk,
     onStrokesChange,
+    onImagesChange,
     onSelectionChange,
     onHistoryChange,
     onViewScaleChange,
@@ -299,6 +322,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
   const { t } = useI18n();
   const rootRef = useRef<HTMLDivElement>(null);
   const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
+  const mediaCanvasRef = useRef<HTMLCanvasElement>(null);
   const inkCanvasRef = useRef<HTMLCanvasElement>(null);
   const liveCanvasRef = useRef<HTMLCanvasElement>(null);
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -306,11 +330,16 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
   const cursorRef = useRef<HTMLDivElement>(null);
 
   const strokesRef = useRef<Stroke[]>([...note.strokes]);
+  const imagesRef = useRef<NoteImage[]>([...(note.images ?? [])]);
   const viewRef = useRef<ViewTransform>({ scale: 1, x: 0, y: 0 });
   const sizeRef = useRef({ width: 0, height: 0, dpr: 1 });
   const initializedRef = useRef(false);
   const selectionRef = useRef<Selection | null>(null);
   const hiddenRef = useRef<Set<string>>(new Set());
+  const hiddenImageIdsRef = useRef<Set<string>>(new Set());
+  const imageElementsRef = useRef<Map<string, HTMLImageElement>>(new Map());
+  const failedImagesRef = useRef<Set<string>>(new Set());
+  const imageLoadingRef = useRef<Set<string>>(new Set());
   const lassoRef = useRef<InkPoint[] | null>(null);
   const livePreviewRef = useRef<LivePreview | SelectionPreviewLive | null>(null);
   const selectionPreviewRef = useRef<SelectionPreview | null>(null);
@@ -330,13 +359,14 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
   const historyRef = useRef<{ past: HistoryEntry[]; future: HistoryEntry[] }>({ past: [], future: [] });
   const rafRef = useRef<number | null>(null);
   const lastReportedPercentRef = useRef(-1);
-  const dirtyRef = useRef<DirtyFlags>({ background: true, ink: true, live: true, overlay: true });
+  const dirtyRef = useRef<DirtyFlags>({ background: true, media: true, ink: true, live: true, overlay: true });
   const backgroundRef = useRef(note.background);
   const themeRef = useRef(theme);
   const toolRef = useRef(tool);
   const settingsRef = useRef(settings);
   const callbacksRef = useRef({
     onStrokesChange,
+    onImagesChange,
     onSelectionChange,
     onHistoryChange,
     onViewScaleChange,
@@ -358,6 +388,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
   settingsRef.current = settings;
   callbacksRef.current = {
     onStrokesChange,
+    onImagesChange,
     onSelectionChange,
     onHistoryChange,
     onViewScaleChange,
@@ -390,6 +421,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       if (options.card !== false) syncCard();
       reportScale();
       dirtyRef.current.background = true;
+      dirtyRef.current.media = true;
       dirtyRef.current.ink = true;
       dirtyRef.current.overlay = true;
       schedulePaintRef.current();
@@ -424,6 +456,34 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     if (dirty.background && backgroundCanvasRef.current) {
       renderBackgroundLayer(backgroundCanvasRef.current, options);
     }
+    if (dirty.media && mediaCanvasRef.current) {
+      const ctx = prepareCanvas(mediaCanvasRef.current, size.width, size.height, size.dpr);
+      ctx.save();
+      applyView(ctx, viewRef.current);
+      for (const image of imagesRef.current) {
+        if (hiddenImageIdsRef.current.has(image.id)) continue;
+        const element = imageElementsRef.current.get(image.src);
+        if (element) {
+          drawNoteImage(ctx, image, element);
+          continue;
+        }
+        imagePlaceholder(ctx, image, themeRef.current === 'dark' ? '#cfe6ff' : '#2b7fff');
+        if (!failedImagesRef.current.has(image.src) && !imageLoadingRef.current.has(image.src)) {
+          imageLoadingRef.current.add(image.src);
+          void ensureImage(image.src).then((loadedImage) => {
+            imageLoadingRef.current.delete(image.src);
+            if (loadedImage) {
+              imageElementsRef.current.set(image.src, loadedImage);
+              dirtyRef.current.media = true;
+              schedulePaintRef.current();
+            } else {
+              failedImagesRef.current.add(image.src);
+            }
+          });
+        }
+      }
+      ctx.restore();
+    }
     if (dirty.ink && inkCanvasRef.current) {
       renderInk(inkCanvasRef.current, options);
     }
@@ -442,6 +502,11 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
           ctx.rotate(preview.rotation);
           ctx.translate(-center.x, -center.y);
           for (const stroke of live.strokes) drawStroke(ctx, stroke);
+          for (const image of live.images) {
+            const element = imageElementsRef.current.get(image.src);
+            if (element) drawNoteImage(ctx, image, element);
+            else imagePlaceholder(ctx, image, themeRef.current === 'dark' ? '#cfe6ff' : '#2b7fff');
+          }
         }
         ctx.restore();
       }
@@ -453,11 +518,12 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
         lasso: lassoRef.current,
       });
     }
-    dirtyRef.current = { background: false, ink: false, live: false, overlay: false };
+    dirtyRef.current = { background: false, media: false, ink: false, live: false, overlay: false };
   };
 
   const markDirty = useCallback((flags: Partial<DirtyFlags>) => {
     if (flags.background) dirtyRef.current.background = true;
+    if (flags.media) dirtyRef.current.media = true;
     if (flags.ink) dirtyRef.current.ink = true;
     if (flags.live) dirtyRef.current.live = true;
     if (flags.overlay) dirtyRef.current.overlay = true;
@@ -481,9 +547,14 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     [markDirty],
   );
 
+  const snapshot = useCallback((): DocumentSnapshot => ({
+    strokes: strokesRef.current,
+    images: imagesRef.current,
+  }), []);
+
   const pushHistory = useCallback(
-    (before: Stroke[], after: Stroke[]) => {
-      if (before === after) return;
+    (before: DocumentSnapshot, after: DocumentSnapshot) => {
+      if (before.strokes === after.strokes && before.images === after.images) return;
       historyRef.current.past.push({ before, after });
       if (historyRef.current.past.length > MAX_HISTORY) historyRef.current.past.shift();
       historyRef.current.future = [];
@@ -492,27 +563,32 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     [notifyHistory],
   );
 
-  const commitStrokes = useCallback(
-    (next: Stroke[], before = strokesRef.current) => {
-      strokesRef.current = next;
-      pushHistory(before, next);
-      callbacksRef.current.onStrokesChange(next);
-      markDirty({ ink: true, overlay: true });
+  const applyDocument = useCallback(
+    (nextStrokes: Stroke[], nextImages: NoteImage[], before: DocumentSnapshot) => {
+      strokesRef.current = nextStrokes;
+      imagesRef.current = nextImages;
+      pushHistory(before, { strokes: nextStrokes, images: nextImages });
+      if (nextStrokes !== before.strokes) callbacksRef.current.onStrokesChange(nextStrokes);
+      if (nextImages !== before.images) callbacksRef.current.onImagesChange(nextImages);
+      markDirty({ media: true, ink: true, overlay: true });
     },
     [markDirty, pushHistory],
   );
 
-  const restoreStrokes = useCallback(
-    (next: Stroke[]) => {
-      strokesRef.current = next;
+  const restoreDocument = useCallback(
+    (next: DocumentSnapshot) => {
+      strokesRef.current = next.strokes;
+      imagesRef.current = next.images;
       hiddenRef.current = new Set();
+      hiddenImageIdsRef.current = new Set();
       selectionRef.current = null;
       selectionPreviewRef.current = null;
       livePreviewRef.current = null;
       lassoRef.current = null;
-      callbacksRef.current.onStrokesChange(next);
+      callbacksRef.current.onStrokesChange(next.strokes);
+      callbacksRef.current.onImagesChange(next.images);
       callbacksRef.current.onSelectionChange(null);
-      markDirty({ ink: true, live: true, overlay: true });
+      markDirty({ media: true, ink: true, live: true, overlay: true });
     },
     [markDirty],
   );
@@ -521,45 +597,53 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     const entry = historyRef.current.past.pop();
     if (!entry) return;
     historyRef.current.future.push(entry);
-    restoreStrokes(entry.before);
+    restoreDocument(entry.before);
     notifyHistory();
-  }, [notifyHistory, restoreStrokes]);
+  }, [notifyHistory, restoreDocument]);
 
   const redo = useCallback(() => {
     const entry = historyRef.current.future.pop();
     if (!entry) return;
     historyRef.current.past.push(entry);
-    restoreStrokes(entry.after);
+    restoreDocument(entry.after);
     notifyHistory();
-  }, [notifyHistory, restoreStrokes]);
+  }, [notifyHistory, restoreDocument]);
 
   const commitSelectionTransformSafe = useCallback(
     (preview: SelectionPreview) => {
       const selection = selectionRef.current;
       if (!selection) return;
-      const before = strokesRef.current;
+      const before = snapshot();
       const center = boundsCenter(selection.bounds);
-      const ids = new Set(selection.ids);
+      const strokeIds = new Set(selection.ids);
+      const imageIds = new Set(selection.imageIds);
       const transformPoint = (point: InkPoint): InkPoint => {
         const rotated = rotatePoint(point.x, point.y, center.x, center.y, preview.rotation);
         return { ...point, x: rotated.x + preview.dx, y: rotated.y + preview.dy };
       };
-      const next = before.map((stroke) =>
-        ids.has(stroke.id) ? { ...stroke, points: stroke.points.map(transformPoint) } : stroke,
-      );
+      const nextStrokes = strokeIds.size
+        ? before.strokes.map((stroke) =>
+            strokeIds.has(stroke.id) ? { ...stroke, points: stroke.points.map(transformPoint) } : stroke,
+          )
+        : before.strokes;
+      const nextImages = imageIds.size
+        ? before.images.map((image) =>
+            imageIds.has(image.id) ? transformImage(image, preview.dx, preview.dy, preview.rotation, center) : image,
+          )
+        : before.images;
+      if (nextStrokes === before.strokes && nextImages === before.images) return;
       hiddenRef.current = new Set();
+      hiddenImageIdsRef.current = new Set();
       selectionInteractionRef.current = null;
       selectionPreviewRef.current = null;
       livePreviewRef.current = null;
-      strokesRef.current = next;
-      pushHistory(before, next);
-      callbacksRef.current.onStrokesChange(next);
-      const nextSelection = makeSelection(next, selection.ids);
+      applyDocument(nextStrokes, nextImages, before);
+      const nextSelection = makeSelection(nextStrokes, selection.ids, nextImages, selection.imageIds);
       selectionRef.current = nextSelection;
       callbacksRef.current.onSelectionChange(nextSelection);
-      markDirty({ ink: true, live: true, overlay: true });
+      markDirty({ media: true, ink: true, live: true, overlay: true });
     },
-    [markDirty, pushHistory],
+    [applyDocument, markDirty, snapshot],
   );
 
   const rotateSelection = useCallback(
@@ -574,36 +658,63 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
   const deleteSelection = useCallback(() => {
     const selection = selectionRef.current;
     if (!selection) return;
-    const before = strokesRef.current;
-    const ids = new Set(selection.ids);
-    const next = before.filter((stroke) => !ids.has(stroke.id));
+    const before = snapshot();
+    const strokeIds = new Set(selection.ids);
+    const imageIds = new Set(selection.imageIds);
+    const nextStrokes = selection.ids.length
+      ? before.strokes.filter((stroke) => !strokeIds.has(stroke.id))
+      : before.strokes;
+    const nextImages = selection.imageIds.length
+      ? before.images.filter((image) => !imageIds.has(image.id))
+      : before.images;
     selectionRef.current = null;
     callbacksRef.current.onSelectionChange(null);
-    commitStrokes(next, before);
-    markDirty({ ink: true, overlay: true });
-  }, [commitStrokes, markDirty]);
+    applyDocument(nextStrokes, nextImages, before);
+    markDirty({ media: true, ink: true, live: true, overlay: true });
+  }, [applyDocument, markDirty, snapshot]);
 
   const copySelection = useCallback(() => {
     const selection = selectionRef.current;
     if (!selection) return;
-    const ids = new Set(selection.ids);
-    selectionClipboard = strokesRef.current.filter((stroke) => ids.has(stroke.id));
+    const strokeIds = new Set(selection.ids);
+    const imageIds = new Set(selection.imageIds);
+    selectionClipboard = {
+      strokes: strokesRef.current.filter((stroke) => strokeIds.has(stroke.id)),
+      images: imagesRef.current.filter((image) => imageIds.has(image.id)),
+    };
     callbacksRef.current.onToast('toast.selectionCopied');
   }, []);
 
   const paste = useCallback(() => {
-    if (!selectionClipboard.length) return;
-    const before = strokesRef.current;
-    const pasted = cloneStrokes(selectionClipboard, new Set(selectionClipboard.map((stroke) => stroke.id)), 28, 28);
-    if (!pasted.length) return;
-    const next = [...before, ...pasted];
-    commitStrokes(next, before);
-    const selection = makeSelection(next, pasted.map((stroke) => stroke.id));
+    if (!selectionClipboard.strokes.length && !selectionClipboard.images.length) return;
+    const before = snapshot();
+    const pastedStrokes = cloneStrokes(
+      selectionClipboard.strokes,
+      new Set(selectionClipboard.strokes.map((stroke) => stroke.id)),
+      28,
+      28,
+    );
+    const pastedImages = selectionClipboard.images.map((image) => ({
+      ...image,
+      id: createId('image'),
+      x: image.x + 28,
+      y: image.y + 28,
+    }));
+    if (!pastedStrokes.length && !pastedImages.length) return;
+    const nextStrokes = [...before.strokes, ...pastedStrokes];
+    const nextImages = [...before.images, ...pastedImages];
+    applyDocument(nextStrokes, nextImages, before);
+    const selection = makeSelection(
+      nextStrokes,
+      pastedStrokes.map((stroke) => stroke.id),
+      nextImages,
+      pastedImages.map((image) => image.id),
+    );
     selectionRef.current = selection;
     callbacksRef.current.onSelectionChange(selection);
     markDirty({ overlay: true });
     callbacksRef.current.onToast('toast.selectionPasted');
-  }, [commitStrokes, markDirty]);
+  }, [applyDocument, markDirty, snapshot]);
 
   const duplicateSelection = useCallback(() => {
     copySelection();
@@ -611,14 +722,15 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
   }, [copySelection, paste]);
 
   const clearCanvas = useCallback(() => {
-    if (!strokesRef.current.length) return;
-    const before = strokesRef.current;
+    if (!strokesRef.current.length && !imagesRef.current.length) return;
+    const before = snapshot();
     setSelection(null);
     hiddenRef.current = new Set();
-    commitStrokes([], before);
+    hiddenImageIdsRef.current = new Set();
+    applyDocument([], [], before);
     livePreviewRef.current = null;
-    markDirty({ ink: true, live: true, overlay: true });
-  }, [commitStrokes, markDirty, setSelection]);
+    markDirty({ media: true, ink: true, live: true, overlay: true });
+  }, [applyDocument, markDirty, setSelection, snapshot]);
 
   const resetView = useCallback(() => {
     const size = sizeRef.current;
@@ -628,7 +740,8 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
 
   const fitToContent = useCallback(() => {
     const size = sizeRef.current;
-    const bounds = inkBoundsOf(strokesRef.current);
+    let bounds = inkBoundsOf(strokesRef.current);
+    for (const image of imagesRef.current) bounds = unionBounds(bounds, imageBounds(image));
     if (!size.width) return;
     if (bounds) setView(fitView(bounds, size.width, size.height, 96, 2.2, 0.08));
     else resetView();
@@ -660,6 +773,46 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     zoomAt(0.8, size.width / 2, size.height / 2);
   }, [zoomAt]);
 
+  const insertImages = useCallback(
+    (incoming: PreparedImage[]) => {
+      if (!incoming.length) return;
+      const size = sizeRef.current;
+      const view = viewRef.current;
+      const center = {
+        x: (size.width / 2 - view.x) / view.scale,
+        y: (size.height / 2 - view.y) / view.scale,
+      };
+      const maxWidth = Math.min(900, (size.width * 0.55) / view.scale);
+      const maxHeight = Math.min(900, (size.height * 0.55) / view.scale);
+      const before = snapshot();
+      const accepted = incoming.slice(0, Math.max(0, 40 - before.images.length));
+      const added: NoteImage[] = accepted.map((prepared, index) => {
+        const fit = Math.min(1, maxWidth / Math.max(1, prepared.width), maxHeight / Math.max(1, prepared.height));
+        const width = prepared.width * fit;
+        const height = prepared.height * fit;
+        const offset = index * 24;
+        return {
+          id: createId('image'),
+          src: prepared.src,
+          name: prepared.name,
+          mime: prepared.mime,
+          x: center.x - width / 2 + offset,
+          y: center.y - height / 2 + offset,
+          width,
+          height,
+          rotation: 0,
+        };
+      });
+      if (!added.length) return;
+      const nextImages = [...before.images, ...added];
+      applyDocument(before.strokes, nextImages, before);
+      const selection = makeSelection(before.strokes, [], nextImages, added.map((image) => image.id));
+      setSelection(selection);
+      markDirty({ media: true, overlay: true });
+    },
+    [applyDocument, markDirty, setSelection, snapshot],
+  );
+
   useImperativeHandle(
     ref,
     () => ({
@@ -672,6 +825,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       duplicateSelection,
       rotateSelection,
       clearCanvas,
+      insertImages,
       fitToContent,
       resetView,
       zoomIn,
@@ -686,6 +840,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       duplicateSelection,
       rotateSelection,
       clearCanvas,
+      insertImages,
       fitToContent,
       resetView,
       setSelection,
@@ -717,7 +872,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       if (viewRef.current.x === 0 && viewRef.current.y === 0) viewRef.current = initialView(note, width, height);
       syncCard();
       reportScale();
-      markDirty({ background: true, ink: true, live: true, overlay: true });
+      markDirty({ background: true, media: true, ink: true, live: true, overlay: true });
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -950,13 +1105,14 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     selectionPreviewRef.current = null;
     livePreviewRef.current = null;
     hiddenRef.current = new Set();
+    hiddenImageIdsRef.current = new Set();
     panRef.current = null;
     rootRef.current?.classList.remove('is-panning');
     shapeCandidateRef.current = null;
     clearShapeTimer();
     setShapeHint(null);
     rootRef.current?.removeAttribute('data-drawing');
-    markDirty({ ink: true, live: true, overlay: true });
+    markDirty({ media: true, ink: true, live: true, overlay: true });
   }, [clearShapeTimer, markDirty]);
 
   const findMathCluster = useCallback((world: InkPoint): Stroke[] | null => {
@@ -1111,11 +1267,9 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     }
     const before = strokesRef.current;
     const next = [...before, finished];
-    strokesRef.current = next;
-    pushHistory(before, next);
-    callbacksRef.current.onStrokesChange(next);
-    markDirty({ ink: true, live: true });
-  }, [clearShapeTimer, markDirty, pushHistory]);
+    applyDocument(next, imagesRef.current, { strokes: before, images: imagesRef.current });
+    markDirty({ live: true });
+  }, [applyDocument, clearShapeTimer, markDirty]);
 
   const drawEraseSegment = useCallback(
     (from: InkPoint, to: InkPoint, size: number) => {
@@ -1229,10 +1383,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       });
       if (finished) {
         const before = strokesRef.current;
-        const next = [...before, finished];
-        strokesRef.current = next;
-        pushHistory(before, next);
-        callbacksRef.current.onStrokesChange(next);
+        applyDocument([...before, finished], imagesRef.current, { strokes: before, images: imagesRef.current });
       }
       markDirty({ ink: true });
       return;
@@ -1243,13 +1394,13 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       const before = strokesRef.current;
       const next = before.filter((stroke) => !removed.has(stroke.id));
       const selection = selectionRef.current;
-      if (selection && selection.ids.some((id) => removed.has(id))) setSelection(null);
-      strokesRef.current = next;
-      pushHistory(before, next);
-      callbacksRef.current.onStrokesChange(next);
+      if (selection && (selection.ids.some((id) => removed.has(id)) || selection.imageIds.length)) {
+        setSelection(null);
+      }
+      applyDocument(next, imagesRef.current, { strokes: before, images: imagesRef.current });
     }
     markDirty({ ink: true, overlay: true });
-  }, [markDirty, pushHistory, setSelection]);
+  }, [applyDocument, markDirty, setSelection]);
 
   const beginLasso = useCallback(
     (pointerId: number, screenX: number, screenY: number) => {
@@ -1289,7 +1440,8 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       return;
     }
     const ids = strokesInLasso(strokesRef.current, points);
-    const selection = makeSelection(strokesRef.current, ids);
+    const imageIds = imagesInLasso(imagesRef.current, points);
+    const selection = makeSelection(strokesRef.current, ids, imagesRef.current, imageIds);
     selectionRef.current = selection;
     callbacksRef.current.onSelectionChange(selection);
     markDirty({ overlay: true });
@@ -1309,16 +1461,19 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
         preview: { dx: 0, dy: 0, rotation: selection.rotation },
       };
       hiddenRef.current = new Set(selection.ids);
+      hiddenImageIdsRef.current = new Set(selection.imageIds);
       const selected = strokesRef.current.filter((stroke) => selection.ids.includes(stroke.id));
+      const selectedImages = imagesRef.current.filter((image) => selection.imageIds.includes(image.id));
       livePreviewRef.current = null;
       selectionPreviewRef.current = { dx: 0, dy: 0, rotation: selection.rotation };
       livePreviewRef.current = {
         kind: 'selection',
         strokes: selected,
+        images: selectedImages,
         preview: { dx: 0, dy: 0, rotation: selection.rotation },
         center,
       };
-      markDirty({ ink: true, live: true, overlay: true });
+      markDirty({ media: true, ink: true, live: true, overlay: true });
     },
     [markDirty],
   );
@@ -1336,9 +1491,11 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
         interaction.preview = preview;
         selectionPreviewRef.current = preview;
         const selected = strokesRef.current.filter((stroke) => interaction.startSelection.ids.includes(stroke.id));
+        const selectedImages = imagesRef.current.filter((image) => interaction.startSelection.imageIds.includes(image.id));
         livePreviewRef.current = {
           kind: 'selection',
           strokes: selected,
+          images: selectedImages,
           preview,
           center: interaction.center,
         };
@@ -1350,9 +1507,11 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
         interaction.preview = preview;
         selectionPreviewRef.current = preview;
         const selected = strokesRef.current.filter((stroke) => interaction.startSelection.ids.includes(stroke.id));
+        const selectedImages = imagesRef.current.filter((image) => interaction.startSelection.imageIds.includes(image.id));
         livePreviewRef.current = {
           kind: 'selection',
           strokes: selected,
+          images: selectedImages,
           preview,
           center: interaction.center,
         };
@@ -1368,10 +1527,11 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     const { preview } = interaction;
     if (Math.abs(preview.dx) < 0.01 && Math.abs(preview.dy) < 0.01 && Math.abs(preview.rotation) < 0.0005) {
       hiddenRef.current = new Set();
+      hiddenImageIdsRef.current = new Set();
       selectionInteractionRef.current = null;
       selectionPreviewRef.current = null;
       livePreviewRef.current = null;
-      markDirty({ ink: true, live: true, overlay: true });
+      markDirty({ media: true, ink: true, live: true, overlay: true });
       return;
     }
     commitSelectionTransformSafe(preview);
@@ -1551,6 +1711,17 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
         return;
       }
       if (currentTool === 'lasso') {
+        const imageHit = [...imagesRef.current].reverse().find((image) =>
+          hitTestImage(image, world.x, world.y, 6 / viewRef.current.scale),
+        );
+        if (imageHit) {
+          const imageSelection = makeSelection([], [], imagesRef.current, [imageHit.id]);
+          if (imageSelection) {
+            setSelection(imageSelection);
+            beginSelectionInteraction(event.pointerId, world, 'move', imageSelection);
+            return;
+          }
+        }
         beginLasso(event.pointerId, screen.x, screen.y);
         return;
       }
@@ -1750,7 +1921,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       // ResizeObserver on the root handles this; kept for orientation changes
       // that occur while the observer is suspended.
       sizeRef.current = { width, height, dpr: renderDpr(width, height) };
-      markDirty({ background: true, ink: true, live: true, overlay: true });
+      markDirty({ background: true, media: true, ink: true, live: true, overlay: true });
     };
     window.addEventListener('orientationchange', resize);
     return () => window.removeEventListener('orientationchange', resize);
@@ -1785,6 +1956,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       aria-label={markdownMeta.title}
     >
       <canvas ref={backgroundCanvasRef} className="canvas-layer canvas-background" aria-hidden="true" />
+      <canvas ref={mediaCanvasRef} className="canvas-layer canvas-media" aria-hidden="true" />
       {markdownHtml ? (
         <div
           ref={cardRef}

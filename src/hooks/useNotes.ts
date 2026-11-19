@@ -228,6 +228,7 @@ export function useNotes(t: Translate, theme: ResolvedTheme) {
         sourcePath: options.sourcePath,
         assets: options.assets,
         strokes: [],
+        images: [],
         background: options.background ?? {
           pattern: 'grid',
           lineStyle: 'solid',

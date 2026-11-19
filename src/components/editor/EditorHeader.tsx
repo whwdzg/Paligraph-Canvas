@@ -8,7 +8,10 @@ import {
   DocumentPdf24Regular,
   DocumentText24Regular,
   Grid24Regular,
+  Image24Regular,
+  ImageAdd24Regular,
   Navigation24Regular,
+  Save24Regular,
   Settings24Regular,
   Warning24Regular,
 } from '@fluentui/react-icons';
@@ -28,10 +31,14 @@ interface EditorHeaderProps {
   onTitleChange: (title: string) => void;
   onOpenSidebar: () => void;
   onOpenSource: () => void;
+  onImportImages: () => void;
   onToggleBackground: () => void;
   onOpenSettings: () => void;
   onExportPdf: () => void;
   onExportMarkdown: () => void;
+  onExportPng: () => void;
+  onExportSvg: () => void;
+  onExportEditable: () => void;
   onNewNote: () => void;
 }
 
@@ -44,10 +51,14 @@ export function EditorHeader({
   onTitleChange,
   onOpenSidebar,
   onOpenSource,
+  onImportImages,
   onToggleBackground,
   onOpenSettings,
   onExportPdf,
   onExportMarkdown,
+  onExportPng,
+  onExportSvg,
+  onExportEditable,
   onNewNote,
 }: EditorHeaderProps) {
   const { t, language } = useI18n();
@@ -100,6 +111,9 @@ export function EditorHeader({
             <Code24Regular />
           </IconButton>
         ) : null}
+        <IconButton label={t('image.import')} onClick={onImportImages} tip="bottom">
+          <ImageAdd24Regular />
+        </IconButton>
         <IconButton
           ref={backgroundButtonRef}
           label={t('background.title')}
@@ -153,6 +167,51 @@ export function EditorHeader({
                 <span>
                   <strong>{t('export.markdown')}</strong>
                   <small>{t('export.markdownHint')}</small>
+                </span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                disabled={exporting}
+                onClick={() => {
+                  setExportOpen(false);
+                  onExportPng();
+                }}
+              >
+                <span className="export-icon is-image"><Image24Regular /></span>
+                <span>
+                  <strong>{t('export.png')}</strong>
+                  <small>{t('export.pngHint')}</small>
+                </span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                disabled={exporting}
+                onClick={() => {
+                  setExportOpen(false);
+                  onExportSvg();
+                }}
+              >
+                <span className="export-icon is-svg"><Code24Regular /></span>
+                <span>
+                  <strong>{t('export.svg')}</strong>
+                  <small>{t('export.svgHint')}</small>
+                </span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                disabled={exporting}
+                onClick={() => {
+                  setExportOpen(false);
+                  onExportEditable();
+                }}
+              >
+                <span className="export-icon is-editable"><Save24Regular /></span>
+                <span>
+                  <strong>{t('export.editable')}</strong>
+                  <small>{t('export.editableHint')}</small>
                 </span>
               </button>
             </div>

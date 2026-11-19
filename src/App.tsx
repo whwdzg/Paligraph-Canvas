@@ -23,6 +23,8 @@ import { useNotes } from './hooks/useNotes';
 import { useThemeSync } from './hooks/useTheme';
 import { useToasts } from './hooks/useToasts';
 import { useClickOutside } from './hooks/useClickOutside';
+import { prepareImageFile, type PreparedImage } from './lib/media';
+import { parseEditableNoteJson, type ImportedNote } from './lib/editable';
 import type { BackgroundSettings, InkTool, Note, Selection, Settings, Stroke } from './lib/types';
 import type { ImportedMarkdownNote } from './lib/obsidian';
 import { useSettingsStore } from './state/settings';
@@ -123,6 +125,7 @@ export default function App() {
   const [mathStrokes, setMathStrokes] = useState<Stroke[] | null>(null);
   const [previewImage, setPreviewImage] = useState<{ src: string; alt: string } | null>(null);
   const surfaceRef = useRef<DrawingSurfaceHandle>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const toolDockRef = useRef<HTMLDivElement>(null);
   const toolOptionsRef = useRef<HTMLDivElement>(null);
   const backgroundPanelRef = useRef<HTMLDivElement>(null);
@@ -288,6 +291,41 @@ export default function App() {
     [noteId, store],
   );
 
+  const handleImagesChange = useCallback(
+    (images: Note['images']) => {
+      if (!noteId) return;
+      store.patchNote(noteId, { images }, { delay: 700 });
+    },
+    [noteId, store],
+  );
+
+  const handleImportImages = async (files: FileList | null): Promise<void> => {
+    if (!files?.length) return;
+    const list = Array.from(files);
+    if (list.length > 12) {
+      showToast(t('image.tooMany'), 'error');
+    }
+    const capacity = Math.max(0, 40 - (activeNote?.images?.length ?? 0));
+    if (!capacity) {
+      showToast(t('image.limit'), 'error');
+      return;
+    }
+    if (list.length > capacity) showToast(t('image.limit'), 'error');
+    const prepared: PreparedImage[] = [];
+    for (const file of list.slice(0, Math.min(12, capacity))) {
+      try {
+        prepared.push(await prepareImageFile(file));
+      } catch (error) {
+        console.error('Could not import image', error);
+        showToast(t('image.failed'), 'error');
+      }
+    }
+    if (prepared.length) {
+      surfaceRef.current?.insertImages(prepared);
+      showToast(t('image.imported', { count: prepared.length }), 'success');
+    }
+  };
+
   const handleSelectionChange = useCallback((next: Selection | null) => {
     setSelection(next);
     if (next) setInspector(null);
@@ -318,13 +356,53 @@ export default function App() {
     if (!activeNote) return;
     try {
       const { exportMarkdownFile } = await import('./lib/exporters');
-      exportMarkdownFile(activeNote, {
+      await exportMarkdownFile(activeNote, {
         inkHeading: t('export.inkHeading'),
         page: t('export.page'),
         createdWith: t('export.createdWith'),
         emptyNote: t('export.emptyNote'),
       });
       showToast(t('export.markdownDone'), 'success');
+    } catch (error) {
+      console.error(error);
+      showToast(t('export.failed'), 'error');
+    }
+  };
+
+  const handleExportPng = async () => {
+    if (!activeNote || exporting) return;
+    setExporting(true);
+    store.flush(activeNote.id);
+    try {
+      const { exportPngFile } = await import('./lib/exporters');
+      await exportPngFile(activeNote);
+      showToast(t('export.pngDone'), 'success');
+    } catch (error) {
+      console.error(error);
+      showToast(t('export.failed'), 'error');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportSvg = async () => {
+    if (!activeNote) return;
+    try {
+      const { exportSvgFile } = await import('./lib/exporters');
+      exportSvgFile(activeNote);
+      showToast(t('export.svgDone'), 'success');
+    } catch (error) {
+      console.error(error);
+      showToast(t('export.failed'), 'error');
+    }
+  };
+
+  const handleExportEditable = async () => {
+    if (!activeNote) return;
+    try {
+      const { exportEditableFile } = await import('./lib/exporters');
+      exportEditableFile(activeNote);
+      showToast(t('export.editableDone'), 'success');
     } catch (error) {
       console.error(error);
       showToast(t('export.failed'), 'error');
@@ -347,6 +425,24 @@ export default function App() {
     showToast(t('import.done', { count: created.length }), 'success');
   };
 
+  const handleImportEditable = async (files: File[]): Promise<void> => {
+    const parsed: ImportedNote[] = [];
+    for (const file of files.slice(0, 12)) {
+      try {
+        const note = parseEditableNoteJson(await file.text());
+        parsed.push(note);
+      } catch (error) {
+        console.error('Could not import editable note', error);
+        showToast(`${t('import.editableError')} ${error instanceof Error ? error.message : ''}`.trim(), 'error');
+      }
+    }
+    if (!parsed.length) return;
+    const created = store.importNotes(parsed);
+    setImportOpen(false);
+    setSidebarOpen(false);
+    showToast(t('import.done', { count: created.length }), 'success');
+  };
+
   const handleDeleteNote = () => {
     if (!noteToDelete) return;
     void store.deleteNote(noteToDelete.id);
@@ -362,11 +458,13 @@ export default function App() {
   };
 
   const activeHasInk = Boolean(activeNote?.strokes.some((stroke) => stroke.tool !== 'eraser'));
+  const activeHasImages = Boolean(activeNote?.images?.length);
   const showEmptyHint =
     Boolean(activeNote) &&
     settings.showCanvasHints &&
     !hintDismissed &&
     !activeHasInk &&
+    !activeHasImages &&
     !activeNote?.markdown;
 
   if (store.loading) return <AppSkeleton />;
@@ -420,6 +518,7 @@ export default function App() {
               }}
               onOpenSidebar={() => setSidebarOpen(true)}
               onOpenSource={() => setSourceOpen(true)}
+              onImportImages={() => imageInputRef.current?.click()}
               onToggleBackground={() => {
                 setBackgroundOpen((open) => !open);
                 setInspector(null);
@@ -430,6 +529,9 @@ export default function App() {
               }}
               onExportPdf={() => void handleExportPdf()}
               onExportMarkdown={() => void handleExportMarkdown()}
+              onExportPng={() => void handleExportPng()}
+              onExportSvg={() => void handleExportSvg()}
+              onExportEditable={() => void handleExportEditable()}
               onNewNote={createNote}
             />
 
@@ -448,8 +550,9 @@ export default function App() {
                   readingMinutes,
                 }}
                 gestureHint={t('gesture.active')}
-                hasInk={activeHasInk}
+                hasInk={activeHasInk || activeHasImages}
                 onStrokesChange={handleStrokesChange}
+                onImagesChange={handleImagesChange}
                 onSelectionChange={handleSelectionChange}
                 onHistoryChange={setHistory}
                 onViewScaleChange={setScale}
@@ -546,7 +649,12 @@ export default function App() {
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} onToast={showToast} />
       <Suspense fallback={null}>
         {importOpen ? (
-          <ImportDialog open onClose={() => setImportOpen(false)} onImport={handleImport} />
+          <ImportDialog
+            open
+            onClose={() => setImportOpen(false)}
+            onImport={handleImport}
+            onImportEditable={(files) => void handleImportEditable(files)}
+          />
         ) : null}
       </Suspense>
       <Suspense fallback={null}>
@@ -598,6 +706,18 @@ export default function App() {
       {previewImage ? (
         <ImagePreviewDialog src={previewImage.src} alt={previewImage.alt} onClose={() => setPreviewImage(null)} />
       ) : null}
+
+      <input
+        ref={imageInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml,.svg"
+        multiple
+        hidden
+        onChange={(event) => {
+          void handleImportImages(event.currentTarget.files);
+          event.currentTarget.value = '';
+        }}
+      />
 
       <ToastHost toasts={toasts} onDismiss={dismissToast} dismissLabel={t('common.dismiss')} />
     </div>

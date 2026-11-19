@@ -3,7 +3,7 @@
 **灵感，落于笔尖。** A local-first notebook for ink, Markdown and the ideas in between.
 
 [![Deploy to GitHub Pages](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml/badge.svg)](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml)
-![Version](https://img.shields.io/badge/version-1.1.0-2b7fff)
+![Version](https://img.shields.io/badge/version-1.2.0-2b7fff)
 ![License](https://img.shields.io/badge/license-GPL--3.0--or--later-4c1)
 
 Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布、一套接近 Apple Notes 的悬浮工具栏、Fluent Design Sun Valley 的材质，以及可选的液态玻璃（liquid glass）质感。它把笔迹数据和 Markdown 都留在这台设备上，并可以在需要时导出为 PDF 或 Markdown。
@@ -19,6 +19,7 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 | 图形纠正 | 手写数学 |
 | --- | --- |
 | ![画完后按住识别矩形](docs/shape-recognition.png) | ![长按笔迹求解](docs/handwriting-math.png) |
+| ![画布图片与选区](docs/canvas-images.png) | ![PNG/SVG/可编辑笔记导出](docs/export-menu.png) |
 
 <p align="center">
   <img src="docs/mobile.png" alt="Paligraph Canvas 移动端" width="280" />
@@ -42,11 +43,18 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 
 ### 选择与编辑
 
-- 套索圈选笔迹，浮动工具条显示已选笔画数量。
-- 拖动选区移动；拖动上方圆形手柄旋转；支持按钮旋转 90°。
-- 复制、再制、删除、取消选择；`Ctrl/⌘ + C / V` 使用会话剪贴板。
-- 撤销 / 重做覆盖绘制、擦除、移动、旋转、复制粘贴与清空画布。
+- 套索圈选笔迹和画布图片，浮动工具条显示已选项目数量。
+- 直接点击图片即可选中；拖动选区移动；拖动上方圆形手柄旋转；支持按钮旋转 90°。
+- 复制、再制、删除、取消选择；`Ctrl/⌘ + C / V` 使用会话剪贴板，跨笔记也能粘贴图片。
+- 撤销 / 重做覆盖绘制、擦除、图片插入、移动、旋转、复制粘贴与清空画布。
 - 对象擦除、像素擦除、撤销历史均为有界操作，不会无限堆积。
+
+### 画布图片
+
+- 顶栏图片按钮可以向**当前已有笔记**插入 PNG、JPEG、WebP、GIF 或 SVG 图片；一次最多 12 张，每篇最多 40 张。
+- 大图会按长边 2400 px 等比缩小并转为 WebP，SVG 保留矢量；图片以 data URL 随笔记保存在 IndexedDB。
+- 图片位于背景之上、笔迹之下，可以像笔迹一样被套索选中、移动、自由旋转、90° 旋转、复制、再制或删除。
+- 图片操作与笔迹操作共享同一套撤销历史；删除图片后可以撤销恢复。
 
 ### Markdown / Obsidian
 
@@ -58,12 +66,17 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 - 导入笔记在笔记列表中生成**内容预览图**：包含标题、正文摘要；如果 Markdown 引用了 Vault 内的第一张图片，预览图会把它裁剪成封面。
 - 阅读卡片内的图片支持点击放大预览（lightbox）；图片区域不会误触发绘图。
 - 一次最多读取 240 篇 Markdown、80 张小图（单图 ≤ 1.6 MB，合计 ≤ 14 MB，单篇 Markdown ≤ 2.5 MB），超出部分会明确提示。
+- 可以从导入对话框打开 `.paligraph` 可编辑笔记文件；它保留笔迹、画布图片、Markdown、背景和附件。
 - 不会向 vault 写入任何内容；导入是单向复制。文件只在浏览器本地读取，不上传。
 
 ### 导出
 
-- **Markdown**：保留原始 Markdown；如果是带笔迹的笔记，会追加一张以 base64 内嵌的笔迹快照。
-- **PDF**：A4 纵向，Markdown 使用系统字体排版后栅格化为页面，解决中文/日文字体嵌入问题；纯笔迹笔记导出笔迹页。
+- **Markdown**：保留原始 Markdown；如果笔记有笔迹或画布图片，会追加一张以 base64 内嵌的内容快照。
+- **PDF**：A4 纵向，Markdown 使用系统字体排版后栅格化为页面，解决中文/日文字体嵌入问题；纯画布笔记导出笔迹与图片内容页。
+- **PNG**：按内容边界导出平面图，包含背景、画布图片和笔迹，适合分享。
+- **SVG**：矢量导出笔迹、图形、画布图片与背景；像素橡皮会转成 SVG mask，缩放不糊。
+- **Paligraph 可编辑笔记（`.paligraph`）**：无损 JSON，包含 Markdown、笔迹、图片、背景和附件，可重新导入继续编辑。
+- 也可以把导出的 PNG/SVG 再当作图片插入任意笔记。
 - 导出模块与 jsPDF 只在点击导出时加载，不进入首屏。
 
 ### 外观、背景与可访问性
@@ -93,7 +106,7 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 npm install
 npm run dev        # http://localhost:4173
 npm run typecheck  # TypeScript
-npm test           # Vitest · 43 tests
+npm test           # Vitest · 50 tests
 npm run build      # 生产构建到 dist/
 npm run preview    # 预览构建，端口 4173
 ```
@@ -132,9 +145,10 @@ $env:GITHUB_ACTIONS='true'; npm run build
 | 钢笔 / 荧光笔 / 橡皮 | 点击工具按钮绘制；再次点击已选中的工具打开选项面板 |
 | 颜色圆环 | 打开当前工具的配色与尺寸选项 |
 | 撤销 / 重做 | 底部工具栏按钮，或 `Ctrl/⌘ + Z`、`Ctrl/⌘ + Shift + Z` |
-| 选择 | 套索圈选；拖动选区移动，拖动圆形手柄旋转 |
+| 选择 | 套索圈选笔迹/图片；拖动选区移动，拖动圆形手柄旋转 |
+| 图片按钮（顶栏） | 向当前笔记插入 PNG/JPG/WebP/GIF/SVG |
 | 背景按钮（顶栏网格） | 打开当前笔记的背景面板 |
-| 导出（顶栏） | PDF 或 Markdown |
+| 导出（顶栏） | PDF、Markdown、PNG、SVG 或 `.paligraph` 可编辑笔记 |
 | 设置（顶栏） | 外观、画布、语言、数据、关于 |
 
 ### 快捷键
@@ -243,7 +257,8 @@ $env:GITHUB_ACTIONS='true'; npm run build
 ### 性能策略
 
 - 首屏只加载 React、Canvas UI 与应用状态；Markdown 渲染器、Obsidian 扫描器、jsPDF 都是按需 chunk。
-- 当前构建首屏 JS gzip 约 **116 KB**（React 69 KB + 应用 34 KB + Fluent 图标 11 KB + 状态 1.4 KB），CSS gzip 约 **14 KB**，语言包约 **5 KB**；手写数学识别器、Markdown 渲染器与导出模块（jsPDF 约 126 KB gzip）都在需要时才下载。
+- 当前构建首屏 JS gzip 约 **118 KB**，CSS gzip 约 **14 KB**，语言包约 **5 KB**；手写数学识别器、Markdown 渲染器、SVG/PNG 编码与导出模块（jsPDF 约 121 KB gzip）都在需要时才下载。
+- 画布图片使用解码缓存（最多 24 张），离屏/缩略图导出按需解码；插入时大图会先缩小，避免把原始相机照片长期留在内存。
 - 所有 Canvas 层按 `devicePixelRatio` 渲染，但根据视口面积与设备内存限制像素预算；大屏不会直接使用 2× 全屏位图，避免四层画布把内存放大到不可控。
 - 只绘制视口内的笔画；输入点会做最小距离过滤、结束时 RDP 简化，避免存储冗余点。
 - 缩略图使用 WebP 矢量重绘，保存时延迟生成；不保存整张画布位图。
@@ -256,7 +271,7 @@ $env:GITHUB_ACTIONS='true'; npm run build
 - 设置保存在 localStorage 的 `paligraph-settings`（Zustand persist）。
 - 语言包保存在 `paligraph-language-packs`。
 - 没有任何遥测、账号或云端调用；导入文件不会离开浏览器。
-- 清除站点数据会删除本地笔记。设置 JSON 与 Markdown/PDF 导出是当前的迁移手段。
+- 清除站点数据会删除本地笔记。设置 JSON、`.paligraph`、Markdown/PDF/PNG/SVG 导出是当前的迁移手段。
 
 ---
 
@@ -283,8 +298,10 @@ Paligraph-Canvas/
 │  ├─ lib/                        几何、笔迹、渲染、存储、导出
 │  │  ├─ math/solver.ts            一元一次方程与四则运算
 │  │  ├─ math/recognizer.ts        本地手写数字/符号识别
+│  │  ├─ media.ts                  画布图片、SVG/位图导入与解码缓存
+│  │  ├─ editable.ts               `.paligraph` 无损可编辑格式
 │  │  ├─ shapes.ts                 基本图形识别与吸附
-│  │  └─ thumbnail.ts              Markdown/笔迹内容预览图
+│  │  └─ thumbnail.ts              Markdown/笔迹/图片内容预览图
 │  ├─ state/                      Zustand 设置 store
 │  └─ styles/                     design tokens 与响应式样式
 ├─ index.html                     首屏主题/locale 预取 + 静态度量
@@ -301,7 +318,7 @@ npm test
 npm run build
 ```
 
-当前验证结果：**43 个单元测试通过**，TypeScript 严格模式无错误，生产构建成功。
+当前验证结果：**50 个单元测试通过**，TypeScript 严格模式无错误，生产构建成功。
 
 浏览器 QA 需要先运行 `npm run preview`，并使用本地 Edge/Chrome：
 
@@ -312,6 +329,8 @@ npm run qa:touch        # CDP 双指长按平移、捏合缩放、快速误触
 npm run qa:features     # 荧光笔直线、橡皮、复制粘贴、设置 JSON、语言
 npm run qa:shapes-math  # 图形吸附、手写数学与竖式
 npm run qa:previews     # Markdown / Obsidian 内容预览图
+npm run qa:images       # 插入图片、选中、旋转、复制、删除、撤销
+npm run qa:export       # PNG / SVG / .paligraph 导出与再导入
 node scripts/qa-assets.mjs  # Obsidian 附件导入与图片 lightbox
 node scripts/qa-pdf.mjs     # 中文 PDF 导出
 ```
@@ -331,6 +350,9 @@ node scripts/qa-pdf.mjs     # 中文 PDF 导出
 - 基本图形纠正只处理直线、矩形、圆形/椭圆、三角形；不会自动纠正复杂图标或手写汉字。
 - 超大笔记（数千笔迹）在低端移动设备上仍可能需要降低缩放或关闭液态玻璃。DPR 预算会优先保证交互流畅。
 - 笔记列表内容预览图只内联 Vault 内的小图（data URL）；外链图片不会抓取，以保持本地优先和画布安全。
+- PNG/SVG 导出的是**画布内容**（背景、图片、笔迹）；Markdown 阅读卡片的正文排版请使用 PDF 或 Markdown 导出，避免把 HTML 文本硬塞进 SVG。
+- SVG 是干净的矢量近似：铅笔/蜡笔的颗粒纹理、毛笔的复杂压力轮廓不会一比一保留；像素橡皮会以 mask 表达。需要完全一致的像素效果请导出 PNG。
+- 画布图片以 data URL 存储，单篇图片过多或过大仍会占用浏览器配额；插入时会限张数并压缩位图。动画 GIF 只保留第一帧。
 - 应用清单已包含 manifest 与安装图标，但未注册 Service Worker，因此不承诺完整离线启动。
 
 ---

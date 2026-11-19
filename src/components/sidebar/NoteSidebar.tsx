@@ -123,10 +123,14 @@ export function NoteSidebar({
 
         <div className="note-list" role="list">
           {filtered.map((note) => {
+            const strokes = note.strokes.filter((stroke) => stroke.tool !== 'eraser').length;
+            const images = note.images?.length ?? 0;
             const excerpt = note.markdown
               ? plainExcerpt(note.markdown, 90)
-              : note.strokes.some((stroke) => stroke.tool !== 'eraser')
-                ? t('note.strokeCount', { count: note.strokes.filter((stroke) => stroke.tool !== 'eraser').length })
+              : strokes || images
+                ? [strokes ? t('note.strokeCount', { count: strokes }) : '', images ? t('note.images', { count: images }) : '']
+                    .filter(Boolean)
+                    .join(' · ')
                 : t('note.empty');
             return (
               <div key={note.id} className="note-card-wrap" role="listitem">

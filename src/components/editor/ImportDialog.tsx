@@ -4,6 +4,7 @@ import {
   ArrowSync24Regular,
   DocumentText24Regular,
   FolderOpen24Regular,
+  Save24Regular,
 } from '@fluentui/react-icons';
 import { useI18n } from '../../i18n/I18nProvider';
 import {
@@ -21,11 +22,12 @@ interface ImportDialogProps {
   open: boolean;
   onClose: () => void;
   onImport: (notes: ImportedMarkdownNote[]) => void;
+  onImportEditable: (files: File[]) => void;
 }
 
 type Phase = 'idle' | 'scanning' | 'ready' | 'error';
 
-export function ImportDialog({ open, onClose, onImport }: ImportDialogProps) {
+export function ImportDialog({ open, onClose, onImport, onImportEditable }: ImportDialogProps) {
   const { t } = useI18n();
   const [phase, setPhase] = useState<Phase>('idle');
   const [result, setResult] = useState<VaultScanResult | null>(null);
@@ -34,6 +36,7 @@ export function ImportDialog({ open, onClose, onImport }: ImportDialogProps) {
   const [dragging, setDragging] = useState(false);
   const filesInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  const editableInputRef = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
 
   useEffect(() => {
@@ -167,6 +170,13 @@ export function ImportDialog({ open, onClose, onImport }: ImportDialogProps) {
                   <small>{t('import.filesHint')}</small>
                 </span>
               </button>
+              <button type="button" className="import-choice is-wide" onClick={() => editableInputRef.current?.click()}>
+                <span className="import-choice-icon"><Save24Regular /></span>
+                <span>
+                  <strong>{t('import.editable')}</strong>
+                  <small>{t('import.editableHint')}</small>
+                </span>
+              </button>
             </div>
             <p className="import-note">{t('import.localNote')}</p>
             {error ? <p className="import-error" role="alert">{error}</p> : null}
@@ -239,6 +249,18 @@ export function ImportDialog({ open, onClose, onImport }: ImportDialogProps) {
         multiple
         hidden
         onChange={(event) => takeInput(event.currentTarget)}
+      />
+      <input
+        ref={editableInputRef}
+        type="file"
+        accept=".paligraph,application/json,.json"
+        multiple
+        hidden
+        onChange={(event) => {
+          const files = Array.from(event.currentTarget.files ?? []);
+          if (files.length) onImportEditable(files);
+          event.currentTarget.value = '';
+        }}
       />
     </Modal>
   );

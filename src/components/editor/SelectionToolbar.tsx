@@ -21,7 +21,7 @@ export function SelectionToolbar({ selection, onDuplicate, onCopy, onRotate, onD
   const { t } = useI18n();
   return (
     <div className="selection-toolbar glass-surface" role="toolbar" aria-label={t('selection.label')}>
-      <span className="selection-count">{t('selection.count', { count: selection.ids.length })}</span>
+      <span className="selection-count">{t('selection.count', { count: selection.ids.length + selection.imageIds.length })}</span>
       <span className="selection-hint">{t('selection.dragHint')}</span>
       <span className="dock-divider" aria-hidden="true" />
       <button type="button" className="selection-action" onClick={onCopy} aria-label={t('selection.copy')} data-tooltip={t('selection.copy')}>

@@ -4,13 +4,14 @@ import {
   cloneStrokes,
   finishStroke,
   hitTestStroke,
+  imagesInLasso,
   makeSelection,
   moveStrokes,
   rotateStrokes,
   strokeIntersectsEraser,
   strokesInLasso,
 } from './strokes';
-import type { InkPoint, Stroke } from './types';
+import type { InkPoint, NoteImage, Stroke } from './types';
 
 const point = (x: number, y: number, p = 0.5): InkPoint => ({ x, y, p });
 
@@ -91,5 +92,24 @@ describe('stroke operations', () => {
     expect(bounds?.maxX).toBeGreaterThan(10);
     const selection = makeSelection([stroke], ['stroke-1']);
     expect(selection?.ids).toEqual(['stroke-1']);
+  });
+
+  it('selects images by lasso and combines them with strokes', () => {
+    const image: NoteImage = {
+      id: 'image-1',
+      src: 'data:image/png;base64,AA==',
+      name: 'dot.png',
+      mime: 'image/png',
+      x: 40,
+      y: 40,
+      width: 20,
+      height: 20,
+      rotation: 0,
+    };
+    const polygon = [point(0, 0), point(100, 0), point(100, 100), point(0, 100)];
+    expect(imagesInLasso([image], polygon)).toEqual(['image-1']);
+    const selection = makeSelection([], [], [image], ['image-1']);
+    expect(selection?.imageIds).toEqual(['image-1']);
+    expect(selection?.bounds.maxX).toBe(60);
   });
 });

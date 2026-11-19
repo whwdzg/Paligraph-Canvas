@@ -43,6 +43,21 @@ export interface Stroke {
   createdAt: number;
 }
 
+export interface NoteImage {
+  id: string;
+  /** Data URL. Small raster imports are normalised to WebP; SVG is preserved. */
+  src: string;
+  name: string;
+  mime: string;
+  /** Top-left before rotation, in world coordinates. */
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Clockwise radians around the image centre. */
+  rotation: number;
+}
+
 export interface BackgroundSettings {
   pattern: PaperPattern;
   lineStyle: PaperLineStyle;
@@ -64,6 +79,8 @@ export interface Note {
   /** Small image attachments referenced by the Markdown, as data URLs. */
   assets?: Record<string, string>;
   strokes: Stroke[];
+  /** Images placed directly on the canvas (not Markdown embeds). */
+  images?: NoteImage[];
   background: BackgroundSettings;
   createdAt: number;
   updatedAt: number;
@@ -90,6 +107,7 @@ export interface Bounds {
 
 export interface Selection {
   ids: string[];
+  imageIds: string[];
   bounds: Bounds;
   /** Current rotation, in radians, used by the selection overlay. */
   rotation: number;
