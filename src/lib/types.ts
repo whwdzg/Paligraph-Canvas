@@ -14,6 +14,7 @@ export type HighlighterMode = 'free' | 'straight';
 export type EraserMode = 'stroke' | 'pixel';
 export type PaperPattern = 'blank' | 'grid' | 'dots' | 'ruled';
 export type PaperLineStyle = 'solid' | 'dashed';
+export type ShapeKind = 'line' | 'rectangle' | 'ellipse' | 'triangle';
 
 export interface InkPoint {
   /** World-space coordinates. */
@@ -37,6 +38,8 @@ export interface Stroke {
   /** Stable seed makes pencil/crayon grain deterministic between redraws. */
   seed: number;
   mode?: HighlighterMode;
+  /** Set after hold-to-correct so exports and redraws keep the clean geometry. */
+  shape?: ShapeKind;
   createdAt: number;
 }
 
@@ -121,6 +124,8 @@ export interface Settings {
   liquidGlass: boolean;
   reduceMotion: boolean;
   palmRejection: boolean;
+  shapeRecognition: boolean;
+  mathRecognition: boolean;
   pressureSensitivity: number;
   penVariant: PenVariant;
   penColor: string;

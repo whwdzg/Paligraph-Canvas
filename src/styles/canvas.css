@@ -689,6 +689,15 @@
 }
 
 /* ---------------------------------------------------------------- empty hint */
+.canvas-region:has(.drawing-surface[data-drawing="true"]) .empty-canvas-hint {
+  animation: none !important;
+  opacity: 0 !important;
+  visibility: hidden;
+  transform: translate(-50%, calc(-50% + 6px)) scale(0.98);
+  pointer-events: none;
+  transition: opacity 140ms var(--ease-fluent), transform 140ms var(--ease-fluent), visibility 0s linear 140ms;
+}
+
 .empty-canvas-hint {
   position: absolute;
   z-index: 6;

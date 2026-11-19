@@ -68,9 +68,9 @@ export function useNotes(t: Translate, theme: ResolvedTheme) {
     }
   }, []);
 
-  const refreshThumbnail = useCallback((note: Note): Note => {
+  const refreshThumbnail = useCallback(async (note: Note): Promise<Note> => {
     try {
-      const thumbnail = generateThumbnail(note, themeRef.current);
+      const thumbnail = await generateThumbnail(note, themeRef.current);
       return thumbnail ? { ...note, thumbnail } : note;
     } catch {
       return note;
@@ -83,7 +83,7 @@ export function useNotes(t: Translate, theme: ResolvedTheme) {
       if (!note) return;
       const generation = (saveGeneration.current.get(id) ?? 0) + 1;
       saveGeneration.current.set(id, generation);
-      const enriched = refreshThumbnail(note);
+      const enriched = await refreshThumbnail(note);
       if (enriched !== note) {
         const next = notesRef.current.map((item) => (item.id === id ? enriched : item));
         notesRef.current = next;
@@ -136,12 +136,19 @@ export function useNotes(t: Translate, theme: ResolvedTheme) {
       try {
         let stored = await loadNotes();
         if (!stored.length) {
-          const welcome = refreshThumbnail(createWelcomeNote(tRef.current('welcome.title')));
+          const welcome = await refreshThumbnail(createWelcomeNote(tRef.current('welcome.title')));
           await saveNote(welcome);
           stored = [welcome];
         } else if (stored.length <= 8) {
-          // Backfill thumbnails for small libraries created before thumbnails existed.
-          stored = stored.map((note) => (note.thumbnail ? note : refreshThumbnail(note)));
+          // Backfill content previews for small libraries, including imported
+          // Markdown notes saved before thumbnails were introduced.
+          stored = await Promise.all(
+            stored.map(async (note) => {
+              if (note.thumbnail && !note.markdown) return note;
+              if (note.markdown || !note.thumbnail) return refreshThumbnail(note);
+              return note;
+            }),
+          );
           await saveNotes(stored.filter((note) => note.thumbnail));
         }
         if (cancelled) return;
@@ -260,6 +267,31 @@ export function useNotes(t: Translate, theme: ResolvedTheme) {
         console.error('Could not import notes', error);
         setSaveStatus('error');
       });
+
+      // Render content previews in the background. A bounded worker pool keeps
+      // a 200-note vault from allocating 200 canvases at once.
+      const queue = created.map((note) => note.id);
+      const worker = async (): Promise<void> => {
+        while (queue.length) {
+          const id = queue.shift();
+          if (!id) return;
+          const note = notesRef.current.find((item) => item.id === id);
+          if (!note) continue;
+          try {
+            const thumbnail = await generateThumbnail(note, themeRef.current);
+            if (!thumbnail) continue;
+            const latest = notesRef.current.find((item) => item.id === id);
+            if (!latest) continue;
+            const enriched = { ...latest, thumbnail };
+            notesRef.current = notesRef.current.map((item) => (item.id === id ? enriched : item));
+            setNotes(notesRef.current);
+            await saveNote(enriched);
+          } catch (error) {
+            console.error('Could not create note preview', error);
+          }
+        }
+      };
+      void Promise.all(Array.from({ length: Math.min(4, created.length) }, () => worker()));
       return created;
     },
     [commit, updateActive],

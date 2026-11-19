@@ -334,6 +334,29 @@ export function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke): void 
     return;
   }
 
+  // Corrected shapes use the stored polygon/ellipse points directly. This
+  // keeps their corners crisp and still rotates/moves correctly because the
+  // points themselves are transformed by the selection tools.
+  if (stroke.shape) {
+    ctx.globalAlpha = clamp(stroke.opacity, 0.15, 1);
+    ctx.lineWidth = Math.max(0.8, stroke.size);
+    ctx.beginPath();
+    if (stroke.shape === 'ellipse') {
+      for (let i = 0; i < points.length; i += 1) {
+        if (i === 0) ctx.moveTo(points[i].x, points[i].y);
+        else ctx.lineTo(points[i].x, points[i].y);
+      }
+      ctx.closePath();
+    } else {
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i += 1) ctx.lineTo(points[i].x, points[i].y);
+      if (stroke.shape !== 'line') ctx.closePath();
+    }
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+
   ctx.globalAlpha = clamp(stroke.opacity, 0.15, 1);
   if (points.length === 1) {
     ctx.beginPath();

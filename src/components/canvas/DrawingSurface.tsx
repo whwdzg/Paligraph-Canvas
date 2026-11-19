@@ -8,6 +8,8 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
+import { Sparkle24Filled } from '@fluentui/react-icons';
+import { useI18n } from '../../i18n/I18nProvider';
 import {
   applyView,
   drawStroke,
@@ -22,8 +24,11 @@ import {
 } from '../../lib/renderer';
 import {
   boundsCenter,
+  boundsIntersect,
   clamp,
   distance,
+  expandBounds,
+  pointsBounds,
   rotatePoint,
   simplifyPoints,
   unionBounds,
@@ -31,11 +36,13 @@ import {
 import {
   cloneStrokes,
   finishStroke,
+  hitTestStroke,
   makeSelection,
   strokeIntersectsEraser,
   strokeBounds,
   strokesInLasso,
 } from '../../lib/strokes';
+import { previewShapeStroke, recognizeShape, snapStrokeToShape, type ShapeFit } from '../../lib/shapes';
 import type {
   Bounds,
   HighlighterMode,
@@ -45,6 +52,7 @@ import type {
   PenVariant,
   Selection,
   Settings,
+  ShapeKind,
   Stroke,
   ViewTransform,
 } from '../../lib/types';
@@ -141,6 +149,25 @@ interface SelectionPreviewLive {
   center: { x: number; y: number };
 }
 
+interface ShapeCandidate {
+  fit: ShapeFit;
+  interaction: DrawInteraction;
+}
+
+interface MathPress {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  timer: number;
+  strokes: Stroke[];
+}
+
+interface ShapeHint {
+  kind: ShapeKind;
+  x: number;
+  y: number;
+}
+
 export interface DrawingSurfaceHandle {
   undo: () => void;
   redo: () => void;
@@ -172,6 +199,8 @@ interface DrawingSurfaceProps {
   onViewScaleChange: (scale: number) => void;
   onToast: (message: string) => void;
   onToolChange: (tool: InkTool) => void;
+  onMathRequest: (strokes: Stroke[]) => void;
+  onImagePreview: (src: string, alt: string) => void;
 }
 
 /** Session clipboard shared across note switches, following the user's intent. */
@@ -262,9 +291,12 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     onViewScaleChange,
     onToast,
     onToolChange,
+    onMathRequest,
+    onImagePreview,
   },
   ref,
 ) {
+  const { t } = useI18n();
   const rootRef = useRef<HTMLDivElement>(null);
   const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
   const inkCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -310,8 +342,15 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     onViewScaleChange,
     onToast,
     onToolChange,
+    onMathRequest,
+    onImagePreview,
   });
   const [gesturing, setGesturing] = useState(false);
+  const [shapeHint, setShapeHint] = useState<ShapeHint | null>(null);
+  const [mathHoldAt, setMathHoldAt] = useState<{ x: number; y: number } | null>(null);
+  const shapeCandidateRef = useRef<ShapeCandidate | null>(null);
+  const shapeTimerRef = useRef<number | null>(null);
+  const mathPressRef = useRef<MathPress | null>(null);
 
   backgroundRef.current = note.background;
   themeRef.current = theme;
@@ -324,6 +363,8 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     onViewScaleChange,
     onToast,
     onToolChange,
+    onMathRequest,
+    onImagePreview,
   };
 
   const schedulePaintRef = useRef<() => void>(() => {});
@@ -878,11 +919,126 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     cursor.style.transform = `translate3d(${screenX - diameter / 2}px, ${screenY - diameter / 2}px, 0)`;
   }, []);
 
+  const clearShapeTimer = useCallback(() => {
+    if (shapeTimerRef.current !== null) {
+      window.clearTimeout(shapeTimerRef.current);
+      shapeTimerRef.current = null;
+    }
+  }, []);
+
+  const cancelShapeRecognition = useCallback((redrawLive = false) => {
+    clearShapeTimer();
+    const hadCandidate = shapeCandidateRef.current !== null;
+    shapeCandidateRef.current = null;
+    setShapeHint(null);
+    if (hadCandidate && redrawLive) markDirty({ live: true });
+  }, [clearShapeTimer, markDirty]);
+
+  const cancelMathPress = useCallback(() => {
+    const press = mathPressRef.current;
+    if (press) window.clearTimeout(press.timer);
+    mathPressRef.current = null;
+    setMathHoldAt(null);
+  }, []);
+
+  const abortTransientInteraction = useCallback(() => {
+    drawRef.current = null;
+    eraseRef.current = null;
+    lassoInteractionRef.current = null;
+    lassoRef.current = null;
+    selectionInteractionRef.current = null;
+    selectionPreviewRef.current = null;
+    livePreviewRef.current = null;
+    hiddenRef.current = new Set();
+    panRef.current = null;
+    rootRef.current?.classList.remove('is-panning');
+    shapeCandidateRef.current = null;
+    clearShapeTimer();
+    setShapeHint(null);
+    rootRef.current?.removeAttribute('data-drawing');
+    markDirty({ ink: true, live: true, overlay: true });
+  }, [clearShapeTimer, markDirty]);
+
+  const findMathCluster = useCallback((world: InkPoint): Stroke[] | null => {
+    const slop = 14 / viewRef.current.scale;
+    const hit = strokesRef.current.find((stroke) => hitTestStroke(stroke, world.x, world.y, { slop }));
+    if (!hit) return null;
+    const cluster: Stroke[] = [hit];
+    let area = strokeBounds(hit);
+    const gap = Math.max(30, hit.size * 5);
+    let changed = true;
+    while (changed && cluster.length < 180) {
+      changed = false;
+      const searchArea = expandBounds(area, gap);
+      for (const stroke of strokesRef.current) {
+        if (stroke.tool === 'eraser' || cluster.includes(stroke)) continue;
+        if (!boundsIntersect(searchArea, strokeBounds(stroke))) continue;
+        cluster.push(stroke);
+        area = unionBounds(area, strokeBounds(stroke)) ?? area;
+        changed = true;
+        if (cluster.length >= 180) break;
+      }
+    }
+    return cluster;
+  }, []);
+
+  const scheduleMathPress = useCallback(
+    (pointerId: number, screenX: number, screenY: number, world: InkPoint) => {
+      cancelMathPress();
+      if (!settingsRef.current.mathRecognition) return;
+      const cluster = findMathCluster(world);
+      if (!cluster) return;
+      const press: MathPress = {
+        pointerId,
+        startX: screenX,
+        startY: screenY,
+        timer: 0,
+        strokes: cluster,
+      };
+      setMathHoldAt({ x: screenX, y: screenY });
+      press.timer = window.setTimeout(() => {
+        if (mathPressRef.current !== press) return;
+        mathPressRef.current = null;
+        setMathHoldAt(null);
+        abortTransientInteraction();
+        callbacksRef.current.onMathRequest(cluster);
+      }, 560);
+      mathPressRef.current = press;
+    },
+    [abortTransientInteraction, cancelMathPress, findMathCluster],
+  );
+
+  const scheduleShapeRecognition = useCallback(
+    (interaction: DrawInteraction) => {
+      clearShapeTimer();
+      if (!settingsRef.current.shapeRecognition || interaction.tool !== 'pen' || interaction.points.length < 5) return;
+      shapeTimerRef.current = window.setTimeout(() => {
+        shapeTimerRef.current = null;
+        if (drawRef.current !== interaction || shapeCandidateRef.current) return;
+        const fit = recognizeShape(interaction.points);
+        if (!fit || fit.confidence < 0.58) return;
+        shapeCandidateRef.current = { fit, interaction };
+        const preview = previewShapeStroke(strokeFromInteraction(interaction, interaction.points), fit);
+        livePreviewRef.current = { kind: 'draft', stroke: preview };
+        const bounds = pointsBounds(fit.points);
+        const view = viewRef.current;
+        setShapeHint({
+          kind: fit.kind,
+          x: (bounds.minX + bounds.maxX) / 2 * view.scale + view.x,
+          y: bounds.minY * view.scale + view.y - 18,
+        });
+        markDirty({ live: true });
+      }, 620);
+    },
+    [clearShapeTimer, markDirty],
+  );
+
   const beginDraw = useCallback(
     (pointerId: number, screenX: number, screenY: number, pressure: number) => {
       const settingsNow = settingsRef.current;
       const currentTool = toolRef.current;
       if (currentTool !== 'pen' && currentTool !== 'highlighter') return;
+      cancelShapeRecognition();
       const isHighlighter = currentTool === 'highlighter';
       const point = worldPoint(screenX, screenY);
       point.p = pressure;
@@ -902,12 +1058,13 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       livePreviewRef.current = { kind: 'draft', stroke: strokeFromInteraction(interaction, interaction.points) };
       markDirty({ live: true });
     },
-    [markDirty, worldPoint],
+    [cancelShapeRecognition, markDirty, worldPoint],
   );
 
   const appendDrawPoint = useCallback(
     (interaction: DrawInteraction, screenX: number, screenY: number, pressure: number) => {
       if (interaction.points.length > 6000) return;
+      if (shapeCandidateRef.current) cancelShapeRecognition();
       const point = worldPoint(screenX, screenY);
       point.p = pressure;
       const last = interaction.points[interaction.points.length - 1];
@@ -920,26 +1077,34 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       }
       livePreviewRef.current = { kind: 'draft', stroke: strokeFromInteraction(interaction, interaction.points) };
       markDirty({ live: true });
+      scheduleShapeRecognition(interaction);
     },
-    [markDirty, worldPoint],
+    [cancelShapeRecognition, markDirty, scheduleShapeRecognition, worldPoint],
   );
 
   const finishDraw = useCallback(() => {
     const interaction = drawRef.current;
+    const candidate = shapeCandidateRef.current;
     drawRef.current = null;
     livePreviewRef.current = null;
+    shapeCandidateRef.current = null;
+    clearShapeTimer();
+    setShapeHint(null);
     if (!interaction || !interaction.points.length) {
       markDirty({ live: true });
       return;
     }
-    const finished = finishStroke(interaction.points, {
-      tool: interaction.tool,
-      variant: interaction.variant,
-      color: interaction.color,
-      size: interaction.size,
-      opacity: interaction.opacity,
-      mode: interaction.mode,
-    });
+    const finished =
+      candidate && candidate.interaction === interaction
+        ? snapStrokeToShape(strokeFromInteraction(interaction, interaction.points), candidate.fit)
+        : finishStroke(interaction.points, {
+            tool: interaction.tool,
+            variant: interaction.variant,
+            color: interaction.color,
+            size: interaction.size,
+            opacity: interaction.opacity,
+            mode: interaction.mode,
+          });
     if (!finished) {
       markDirty({ live: true });
       return;
@@ -950,7 +1115,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     pushHistory(before, next);
     callbacksRef.current.onStrokesChange(next);
     markDirty({ ink: true, live: true });
-  }, [markDirty, pushHistory]);
+  }, [clearShapeTimer, markDirty, pushHistory]);
 
   const drawEraseSegment = useCallback(
     (from: InkPoint, to: InkPoint, size: number) => {
@@ -1226,28 +1391,9 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
   }, []);
 
   const cancelInteractions = useCallback(() => {
-    if (drawRef.current) {
-      drawRef.current = null;
-      livePreviewRef.current = null;
-    }
-    if (eraseRef.current) {
-      eraseRef.current = null;
-      hiddenRef.current = new Set();
-    }
-    if (lassoInteractionRef.current) {
-      lassoInteractionRef.current = null;
-      lassoRef.current = null;
-    }
-    if (selectionInteractionRef.current) {
-      selectionInteractionRef.current = null;
-      selectionPreviewRef.current = null;
-      hiddenRef.current = new Set();
-      livePreviewRef.current = null;
-    }
-    panRef.current = null;
-    rootRef.current?.classList.remove('is-panning');
-    markDirty({ ink: true, live: true, overlay: true });
-  }, [markDirty]);
+    cancelMathPress();
+    abortTransientInteraction();
+  }, [abortTransientInteraction, cancelMathPress]);
 
   const cancelGestureCandidate = useCallback(() => {
     const candidate = gestureCandidateRef.current;
@@ -1257,6 +1403,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
 
   const beginGestureCandidate = useCallback(() => {
     cancelGestureCandidate();
+    cancelMathPress();
     cancelInteractions();
     const points = [...touchPointersRef.current.values()];
     if (points.length < 2) return;
@@ -1367,6 +1514,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       const world = worldPoint(screen.x, screen.y);
       world.p = pressureFor(event);
 
+      root.dataset.drawing = 'true';
       const currentTool = toolRef.current;
       const selection = selectionRef.current;
       if (penBarrelEraser) {
@@ -1375,11 +1523,13 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
         beginErase(event.pointerId, screen.x, screen.y, 'stroke');
         return;
       }
+      if (currentTool !== 'eraser') scheduleMathPress(event.pointerId, screen.x, screen.y, world);
       if (selection) {
         if (currentTool === 'lasso') {
           const geometry = selectionScreenGeometry(selection, viewRef.current);
           if (distance(screen.x, screen.y, geometry.rotateHandle.x, geometry.rotateHandle.y) <= 18) {
             event.preventDefault();
+            cancelMathPress();
             beginSelectionInteraction(event.pointerId, world, 'rotate', selection);
             return;
           }
@@ -1414,8 +1564,10 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       beginPan,
       beginSelectionInteraction,
       cancelInteractions,
+      cancelMathPress,
       localPoint,
       pressureFor,
+      scheduleMathPress,
       setSelection,
       updateCursor,
       worldPoint,
@@ -1428,6 +1580,14 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       pointerScreenRef.current = screen;
       updateCursor(screen.x, screen.y, event.pointerType || 'mouse', true);
       const pointerType = event.pointerType || 'mouse';
+      const mathPress = mathPressRef.current;
+      if (
+        mathPress &&
+        mathPress.pointerId === event.pointerId &&
+        distance(screen.x, screen.y, mathPress.startX, mathPress.startY) > 7
+      ) {
+        cancelMathPress();
+      }
 
       if (pointerType === 'touch' && touchPointersRef.current.has(event.pointerId)) {
         touchPointersRef.current.set(event.pointerId, screen);
@@ -1500,6 +1660,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       appendErasePoint,
       appendLassoPoint,
       cancelGestureCandidate,
+      cancelMathPress,
       localPoint,
       pressureFor,
       setView,
@@ -1512,6 +1673,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
 
   const releasePointer = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>, cancelled: boolean) => {
+      cancelMathPress();
       const pointerType = event.pointerType || 'mouse';
       if (pointerType === 'touch') {
         if (ignoredTouchesRef.current.delete(event.pointerId)) return;
@@ -1538,6 +1700,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
         return;
       }
 
+      rootRef.current?.removeAttribute('data-drawing');
       if (drawRef.current?.pointerId === event.pointerId) finishDraw();
       else if (eraseRef.current?.pointerId === event.pointerId) finishErase();
       else if (lassoInteractionRef.current?.pointerId === event.pointerId) finishLasso();
@@ -1554,6 +1717,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     [
       cancelGestureCandidate,
       cancelInteractions,
+      cancelMathPress,
       endGesture,
       endPan,
       finishDraw,
@@ -1595,6 +1759,9 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
   useEffect(
     () => () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      if (shapeTimerRef.current !== null) window.clearTimeout(shapeTimerRef.current);
+      const press = mathPressRef.current;
+      if (press) window.clearTimeout(press.timer);
       cancelGestureCandidate();
     },
     [cancelGestureCandidate],
@@ -1613,12 +1780,24 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       onPointerCancel={(event) => releasePointer(event, true)}
       onPointerLeave={onPointerLeave}
       onPointerEnter={onPointerEnter}
+      onContextMenu={(event) => event.preventDefault()}
       role="application"
       aria-label={markdownMeta.title}
     >
       <canvas ref={backgroundCanvasRef} className="canvas-layer canvas-background" aria-hidden="true" />
       {markdownHtml ? (
-        <div ref={cardRef} className="markdown-card-anchor">
+        <div
+          ref={cardRef}
+          className="markdown-card-anchor"
+          onPointerDown={(event) => {
+            if (event.target instanceof HTMLImageElement) event.stopPropagation();
+          }}
+          onClick={(event) => {
+            if (!(event.target instanceof HTMLImageElement)) return;
+            event.stopPropagation();
+            callbacksRef.current.onImagePreview(event.target.currentSrc || event.target.src, event.target.alt);
+          }}
+        >
           <article
             className="markdown-card"
             aria-label={markdownMeta.title}
@@ -1630,6 +1809,18 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       <canvas ref={liveCanvasRef} className="canvas-layer canvas-live" aria-hidden="true" />
       <canvas ref={overlayCanvasRef} className="canvas-layer canvas-overlay" aria-hidden="true" />
       <div ref={cursorRef} className="brush-cursor" data-visible="false" aria-hidden="true" />
+      {mathHoldAt ? (
+        <div className="math-hold-indicator" style={{ left: mathHoldAt.x, top: mathHoldAt.y }}>
+          <span className="math-hold-pulse" aria-hidden="true" />
+          {t('math.hold')}
+        </div>
+      ) : null}
+      {shapeHint ? (
+        <div className="shape-hint" style={{ left: shapeHint.x, top: shapeHint.y }}>
+          <Sparkle24Filled />
+          {t('shape.recognized', { shape: t(`shape.${shapeHint.kind}`) })}
+        </div>
+      ) : null}
       {gesturing ? <div className="gesture-pill">{gestureHint}</div> : null}
       {!hasInk && !markdownHtml ? <span className="visually-hidden">Empty canvas</span> : null}
     </div>

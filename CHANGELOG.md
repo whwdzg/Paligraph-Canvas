@@ -2,6 +2,35 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.1.0] — 2026-11-20
+
+### Shape correction
+
+- Draw a line, rectangle, circle/ellipse or triangle, keep the pen still for ~620 ms and release to snap the rough ink to clean geometry.
+- Live “shape recognized” preview and undoable corrected strokes.
+- Shape intent is stored on the stroke and re-rendered crisply after pan, zoom, selection, rotation, export and reload.
+- Shape correction can be disabled in **Settings → Appearance → Pen and touch**.
+
+### Handwriting maths
+
+- Long-press existing ink (~560 ms) to capture the nearby handwriting cluster.
+- Local, offline recognizer for digits, `+ − × ÷`, `=`, and the variable `x`, using geometric operator detection plus normalised font-skeleton bitmap matching.
+- Editable expression field with live solving for arithmetic and one-variable linear equations, including parentheses, decimals and implicit multiplication.
+- Detects simple vertical arithmetic layout and provides an optional aligned column working view.
+- Handwriting preview, per-character confidence chips and a low-confidence warning.
+- Math recognition can be disabled independently in settings.
+
+### Imported note previews
+
+- Markdown and Obsidian notes now generate actual content thumbnails in the note list: title, excerpt and the first referenced vault image as a cropped cover.
+- Preview generation runs in a bounded background worker pool after import, so large vaults stay responsive.
+- Thumbnail aspect ratio and card layout tuned for the new 16:10 previews.
+
+### Internal
+
+- Added `shapes.ts` geometry recognition, `math/solver.ts`, `math/recognizer.ts`, `MathDialog`, shape hold gesture, math hold gesture and 12 new unit tests (43 total).
+- Bumped package/app version to 1.1.0.
+
 ## [1.0.0] — 2026-11-19
 
 First public release.

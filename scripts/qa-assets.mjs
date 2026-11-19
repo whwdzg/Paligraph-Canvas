@@ -38,9 +38,14 @@ const image = page.locator('.markdown-card img');
 const src = await image.getAttribute('src').catch(() => null);
 const callout = await page.locator('.markdown-card blockquote').count();
 await page.screenshot({ path: 'screenshots/asset-import-card.png' });
+await image.click();
+await page.waitForTimeout(350);
+const lightbox = await page.locator('.image-lightbox').count();
+await page.screenshot({ path: 'screenshots/asset-lightbox.png' });
 console.log(JSON.stringify({
   inlineImage: Boolean(src?.startsWith('data:image/png')),
   callout,
+  lightbox,
   errors,
 }, null, 2));
 await browser.close();

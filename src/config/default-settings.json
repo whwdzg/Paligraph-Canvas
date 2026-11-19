@@ -6,6 +6,8 @@
     "liquidGlass": true,
     "reduceMotion": false,
     "palmRejection": true,
+    "shapeRecognition": true,
+    "mathRecognition": true,
     "pressureSensitivity": 0.72,
     "penVariant": "pen",
     "penColor": "#1f6feb",

@@ -13,6 +13,7 @@ import { SelectionToolbar } from './components/editor/SelectionToolbar';
 import { ZoomControls } from './components/editor/ZoomControls';
 import { EmptyCanvasHint } from './components/editor/EmptyCanvasHint';
 import { SourcePanel } from './components/editor/SourcePanel';
+import { ImagePreviewDialog } from './components/editor/ImagePreviewDialog';
 import { NoteSidebar } from './components/sidebar/NoteSidebar';
 import { SettingsDialog } from './components/settings/SettingsDialog';
 import { ConfirmDialog } from './components/common/ConfirmDialog';
@@ -22,7 +23,7 @@ import { useNotes } from './hooks/useNotes';
 import { useThemeSync } from './hooks/useTheme';
 import { useToasts } from './hooks/useToasts';
 import { useClickOutside } from './hooks/useClickOutside';
-import type { BackgroundSettings, InkTool, Note, Selection, Settings } from './lib/types';
+import type { BackgroundSettings, InkTool, Note, Selection, Settings, Stroke } from './lib/types';
 import type { ImportedMarkdownNote } from './lib/obsidian';
 import { useSettingsStore } from './state/settings';
 
@@ -33,6 +34,10 @@ type ToolWithOptions = Exclude<InkTool, 'lasso'>;
 const ImportDialog = lazy(async () => {
   const module = await import('./components/editor/ImportDialog');
   return { default: module.ImportDialog };
+});
+const MathDialog = lazy(async () => {
+  const module = await import('./components/editor/MathDialog');
+  return { default: module.MathDialog };
 });
 
 function LibraryEmpty({
@@ -115,6 +120,8 @@ export default function App() {
   const [hintDismissed, setHintDismissed] = useState(false);
   const [fatalDismissed, setFatalDismissed] = useState(false);
   const [markdownHtml, setMarkdownHtml] = useState('');
+  const [mathStrokes, setMathStrokes] = useState<Stroke[] | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ src: string; alt: string } | null>(null);
   const surfaceRef = useRef<DrawingSurfaceHandle>(null);
   const toolDockRef = useRef<HTMLDivElement>(null);
   const toolOptionsRef = useRef<HTMLDivElement>(null);
@@ -182,6 +189,8 @@ export default function App() {
     setSourceOpen(false);
     setHintDismissed(false);
     setSidebarOpen(false);
+    setMathStrokes(null);
+    setPreviewImage(null);
   }, [noteId]);
 
   useEffect(() => {
@@ -446,6 +455,8 @@ export default function App() {
                 onViewScaleChange={setScale}
                 onToast={showToast}
                 onToolChange={updateTool}
+                onMathRequest={setMathStrokes}
+                onImagePreview={(src, alt) => setPreviewImage({ src, alt })}
               />
 
               <div className="canvas-context" aria-hidden="true">
@@ -538,6 +549,15 @@ export default function App() {
           <ImportDialog open onClose={() => setImportOpen(false)} onImport={handleImport} />
         ) : null}
       </Suspense>
+      <Suspense fallback={null}>
+        {mathStrokes ? (
+          <MathDialog
+            strokes={mathStrokes}
+            onClose={() => setMathStrokes(null)}
+            onToast={showToast}
+          />
+        ) : null}
+      </Suspense>
       {activeNote ? (
         <SourcePanel
           note={activeNote}
@@ -574,6 +594,10 @@ export default function App() {
         }}
         onClose={() => setConfirmClear(false)}
       />
+
+      {previewImage ? (
+        <ImagePreviewDialog src={previewImage.src} alt={previewImage.alt} onClose={() => setPreviewImage(null)} />
+      ) : null}
 
       <ToastHost toasts={toasts} onDismiss={dismissToast} dismissLabel={t('common.dismiss')} />
     </div>

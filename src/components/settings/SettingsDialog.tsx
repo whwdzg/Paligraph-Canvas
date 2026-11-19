@@ -213,6 +213,20 @@ export function SettingsDialog({ open, onClose, onToast }: SettingsDialogProps) 
                     onChange={(palmRejection) => patch({ palmRejection })}
                   />
                 </SettingRow>
+                <SettingRow title={t('appearance.shape')} description={t('appearance.shapeHint')}>
+                  <Switch
+                    label={t('appearance.shape')}
+                    checked={settings.shapeRecognition}
+                    onChange={(shapeRecognition) => patch({ shapeRecognition })}
+                  />
+                </SettingRow>
+                <SettingRow title={t('appearance.math')} description={t('appearance.mathHint')}>
+                  <Switch
+                    label={t('appearance.math')}
+                    checked={settings.mathRecognition}
+                    onChange={(mathRecognition) => patch({ mathRecognition })}
+                  />
+                </SettingRow>
                 <div className="setting-row is-stacked">
                   <div className="setting-copy">
                     <strong>{t('appearance.pressure')}</strong>
@@ -382,6 +396,7 @@ export function SettingsDialog({ open, onClose, onToast }: SettingsDialogProps) 
                   <div><dt>Space + drag</dt><dd>{t('about.shortcutsPan')}</dd></div>
                   <div><dt>Ctrl / ⌘ + scroll</dt><dd>{t('about.shortcutsZoom')}</dd></div>
                   <div><dt>2-finger hold</dt><dd>{t('about.shortcutsTouch')}</dd></div>
+                  <div><dt>Long-press ink</dt><dd>{t('about.shortcutsMath')}</dd></div>
                   <div><dt>0</dt><dd>{t('about.shortcutsReset')}</dd></div>
                 </dl>
               </div>

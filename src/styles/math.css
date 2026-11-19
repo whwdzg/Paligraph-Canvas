@@ -1,0 +1,501 @@
+/* ------------------------------------------------------- recognition hints */
+.shape-hint {
+  position: absolute;
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg-strong);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(22px) saturate(170%);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  animation: shape-hint-in 180ms var(--ease-spring);
+}
+
+.shape-hint svg {
+  width: 14px;
+  height: 14px;
+}
+
+@keyframes shape-hint-in {
+  from { opacity: 0; transform: translate(-50%, calc(-100% + 5px)) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, -100%) scale(1); }
+}
+
+.math-hold-indicator {
+  position: absolute;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg-strong);
+  box-shadow: var(--shadow-soft);
+  backdrop-filter: blur(22px) saturate(170%);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  color: var(--text-2);
+  font-size: 10.5px;
+  font-weight: 650;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 18px));
+  animation: math-hold-in 150ms var(--ease-fluent) 230ms both;
+}
+
+@keyframes math-hold-in {
+  from { opacity: 0; transform: translate(-50%, calc(-100% - 13px)) scale(0.97); }
+  to { opacity: 1; transform: translate(-50%, calc(-100% - 18px)) scale(1); }
+}
+
+.math-hold-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 35%, transparent);
+  animation: math-pulse 900ms var(--ease-fluent) infinite;
+}
+
+@keyframes math-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 30%, transparent); }
+  70% { box-shadow: 0 0 0 7px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* ------------------------------------------------------------- image lightbox */
+.markdown-card img {
+  pointer-events: auto;
+  cursor: zoom-in;
+}
+
+.image-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 360;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 42px;
+  background: rgba(4, 8, 14, 0.82);
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  animation: modal-fade 160ms var(--ease-fluent);
+}
+
+.image-lightbox figure {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: min(1100px, 94vw);
+  max-height: 88vh;
+  margin: 0;
+}
+
+.image-lightbox img {
+  max-width: 100%;
+  max-height: 78vh;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 34px 100px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.18);
+  object-fit: contain;
+}
+
+.image-lightbox figcaption {
+  max-width: 720px;
+  overflow: hidden;
+  color: rgba(240, 246, 255, 0.72);
+  font-size: 11.5px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.image-lightbox-close {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(20, 28, 40, 0.7);
+  color: #fff;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.image-lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.image-lightbox-close svg {
+  width: 20px;
+  height: 20px;
+}
+
+@media (max-width: 640px) {
+  .image-lightbox {
+    padding: 16px;
+  }
+
+  .image-lightbox img {
+    max-height: 72vh;
+  }
+}
+
+/* -------------------------------------------------------------- math dialog */
+.math-modal .modal-body {
+  padding: 0;
+  overflow: auto;
+}
+
+.math-dialog {
+  display: grid;
+  grid-template-columns: 294px minmax(0, 1fr);
+  min-height: 470px;
+}
+
+.math-left {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 20px;
+  border-right: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-solid) 32%, transparent);
+}
+
+.math-preview-paper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 190px;
+  border-radius: 13px;
+  border: 1px solid var(--border);
+  background:
+    radial-gradient(120% 90% at 25% 10%, rgba(255, 255, 255, 0.6), transparent 65%),
+    var(--paper);
+  overflow: hidden;
+}
+
+[data-theme="dark"] .math-preview-paper {
+  background:
+    radial-gradient(120% 90% at 25% 10%, rgba(255, 255, 255, 0.06), transparent 65%),
+    var(--paper);
+}
+
+.math-preview-paper svg {
+  width: 100%;
+  height: 100%;
+  max-height: 230px;
+  padding: 18px;
+}
+
+.math-preview-badge {
+  position: absolute;
+  left: 9px;
+  bottom: 8px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--surface-solid) 78%, transparent);
+  color: var(--text-4);
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.math-recognition-status {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-3);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.confidence-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.confidence-high { background: var(--success); }
+.confidence-medium { background: var(--warning); }
+.confidence-low { background: var(--danger); }
+
+.math-glyph-count {
+  margin-left: auto;
+  color: var(--text-4);
+  font-weight: 500;
+}
+
+.math-glyphs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.math-edited-note {
+  padding: 7px 9px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--success) 8%, transparent);
+  color: var(--success);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.math-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 27px;
+  height: 29px;
+  padding: 0 6px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.math-glyph.is-uncertain {
+  border-color: color-mix(in srgb, var(--warning) 45%, var(--border));
+  background: color-mix(in srgb, var(--warning) 9%, var(--surface-1));
+}
+
+.math-layout-note {
+  margin-top: auto;
+  color: var(--accent);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.math-work {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 22px 24px 24px;
+}
+
+.math-expression-label {
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.math-expression-field {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 13px;
+  border-radius: 10px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-1);
+  transition: border-color 140ms var(--ease-fluent), box-shadow 140ms var(--ease-fluent);
+}
+
+.math-expression-field:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.math-expression-field svg {
+  width: 19px;
+  height: 19px;
+  color: var(--text-3);
+}
+
+.math-expression-field input {
+  width: 100%;
+  min-width: 0;
+  height: 46px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.math-hint {
+  color: var(--text-3);
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.math-work > .segmented {
+  align-self: flex-start;
+}
+
+.math-answer {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 4px;
+  padding: 16px;
+  border-radius: 13px;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 9%, transparent), transparent 65%),
+    var(--surface-1);
+}
+
+.math-answer-label {
+  color: var(--text-3);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.math-answer > strong {
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: clamp(30px, 4.2vw, 42px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+}
+
+.math-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 18px;
+  margin: 4px 0 0;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.math-steps li::marker {
+  color: var(--text-4);
+}
+
+.math-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.math-message svg {
+  width: 18px;
+  height: 18px;
+  color: var(--accent);
+}
+
+.math-message.is-error {
+  color: var(--danger);
+}
+
+.math-placeholder {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.math-warning {
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--warning) 9%, transparent);
+  color: var(--warning);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.vertical-work {
+  margin-top: 4px;
+}
+
+.vertical-title {
+  margin-bottom: 6px;
+  color: var(--text-3);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.vertical-work pre {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  width: fit-content;
+  min-width: 150px;
+  margin: 0;
+  padding: 13px 18px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--paper);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 16px;
+  line-height: 1.15;
+  letter-spacing: 0.08em;
+  white-space: pre;
+}
+
+.vertical-rule {
+  color: var(--text-3);
+  letter-spacing: 0;
+  line-height: 0.8;
+}
+
+@media (max-width: 760px) {
+  .math-dialog {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .math-left {
+    padding: 14px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .math-preview-paper {
+    min-height: 135px;
+    max-height: 170px;
+  }
+
+  .math-preview-paper svg {
+    max-height: 160px;
+    padding: 10px;
+  }
+
+  .math-work {
+    padding: 16px 15px 20px;
+  }
+
+  .math-modal .modal-body {
+    max-height: 72vh;
+  }
+}

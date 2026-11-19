@@ -3,7 +3,7 @@
 **灵感，落于笔尖。** A local-first notebook for ink, Markdown and the ideas in between.
 
 [![Deploy to GitHub Pages](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml/badge.svg)](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml)
-![Version](https://img.shields.io/badge/version-1.0.0-2b7fff)
+![Version](https://img.shields.io/badge/version-1.1.0-2b7fff)
 ![License](https://img.shields.io/badge/license-GPL--3.0--or--later-4c1)
 
 Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布、一套接近 Apple Notes 的悬浮工具栏、Fluent Design Sun Valley 的材质，以及可选的液态玻璃（liquid glass）质感。它把笔迹数据和 Markdown 都留在这台设备上，并可以在需要时导出为 PDF 或 Markdown。
@@ -15,6 +15,10 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 | 深色 / 阅读卡片 | 笔刷选项 |
 | --- | --- |
 | ![深色界面](docs/hero-dark.png) | ![笔刷选项](docs/tool-options.png) |
+
+| 图形纠正 | 手写数学 |
+| --- | --- |
+| ![画完后按住识别矩形](docs/shape-recognition.png) | ![长按笔迹求解](docs/handwriting-math.png) |
 
 <p align="center">
   <img src="docs/mobile.png" alt="Paligraph Canvas 移动端" width="280" />
@@ -29,6 +33,8 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 - 无限画布，世界坐标与视口缩放分离；平移或缩放时不会破坏绘制精度。
 - 钢笔、铅笔、蜡笔、毛笔四种笔触，压感会改变线条粗细。
 - 荧光笔支持自由绘制与**直线**两种模式，颜色、宽度独立设置。
+- **基本图形纠正**：画完直线、矩形、圆形/椭圆或三角形后按住笔尖停留，松手时自动吸附为干净图形。
+- **手写数学**：长按已有笔迹约 0.56 秒，识别一元一次方程、四则运算和简单竖式；识别结果可在对话框中直接修正并实时求解。
 - 橡皮支持**按笔迹擦**（整条笔画）与**像素擦**（只擦除触及区域），也可以一键清空画布。
 - 手写笔适配：Pointer Events 压感、合并事件、手掌防误触、笔杆侧键临时切换为橡皮。
 - 双指**长按约 260 ms** 后移动可平移画布，捏合可缩放；快速双指触碰不会误移画布。
@@ -49,6 +55,8 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 - 保留 vault 相对路径和小型图片附件；`![[image.png]]`、`[[Note|label]]`、`==highlight==` 与 `> [!tip]` 等 Obsidian 语法会转成可读的阅读卡片。
 - 原始 Markdown 无损保留，可在右侧源码抽屉中编辑。
 - 每篇导入笔记会变成一张画布笔记：阅读卡片位于世界坐标中，可直接在其上绘图、圈画、批注。
+- 导入笔记在笔记列表中生成**内容预览图**：包含标题、正文摘要；如果 Markdown 引用了 Vault 内的第一张图片，预览图会把它裁剪成封面。
+- 阅读卡片内的图片支持点击放大预览（lightbox）；图片区域不会误触发绘图。
 - 一次最多读取 240 篇 Markdown、80 张小图（单图 ≤ 1.6 MB，合计 ≤ 14 MB，单篇 Markdown ≤ 2.5 MB），超出部分会明确提示。
 - 不会向 vault 写入任何内容；导入是单向复制。文件只在浏览器本地读取，不上传。
 
@@ -64,7 +72,7 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 - 可选液态玻璃材质；关闭后使用实色 Fluent 层，降低 GPU 合成开销。
 - 背景支持**空白、网格、圆点、横线**；线条支持实线/虚线；可调间距、透明度、色调。
 - 每篇笔记独立背景，也可以把当前背景保存为新笔记默认值。
-- 减少动态效果、画布提示、压感灵敏度、防误触均可配置。
+- 减少动态效果、画布提示、压感灵敏度、防误触、图形纠正与手写数学均可配置。
 - 所有 UI 图标来自 [Microsoft Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons)（MIT）。
 
 ### 多语言与数据
@@ -85,7 +93,7 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 npm install
 npm run dev        # http://localhost:4173
 npm run typecheck  # TypeScript
-npm test           # Vitest · 31 tests
+npm test           # Vitest · 43 tests
 npm run build      # 生产构建到 dist/
 npm run preview    # 预览构建，端口 4173
 ```
@@ -144,6 +152,8 @@ $env:GITHUB_ACTIONS='true'; npm run build
 | `Space + 拖动` | 平移画布 |
 | `Ctrl/⌘ + 滚轮` | 以指针为中心缩放 |
 | `N` | 新建笔记 |
+| 画完图形后按住 | 停顿约 0.62 秒纠正为基本图形 |
+| 长按已有笔迹 | 打开手写数学求解（约 0.56 秒） |
 
 ### 触控与手写笔
 
@@ -165,6 +175,8 @@ $env:GITHUB_ACTIONS='true'; npm run build
     "theme": "system",
     "language": "system",
     "liquidGlass": true,
+    "shapeRecognition": true,
+    "mathRecognition": true,
     "penVariant": "pen",
     "penColor": "#1f6feb",
     "penSize": 4,
@@ -231,7 +243,7 @@ $env:GITHUB_ACTIONS='true'; npm run build
 ### 性能策略
 
 - 首屏只加载 React、Canvas UI 与应用状态；Markdown 渲染器、Obsidian 扫描器、jsPDF 都是按需 chunk。
-- 当前构建首屏 JS gzip 约 **113 KB**（React 69 KB + 应用 31 KB + Fluent 图标 11 KB + 状态 1.4 KB），CSS gzip 约 **12.6 KB**，语言包约 **3–4 KB**；导出模块（jsPDF 约 126 KB gzip）在点击导出后才下载。
+- 当前构建首屏 JS gzip 约 **116 KB**（React 69 KB + 应用 34 KB + Fluent 图标 11 KB + 状态 1.4 KB），CSS gzip 约 **14 KB**，语言包约 **5 KB**；手写数学识别器、Markdown 渲染器与导出模块（jsPDF 约 126 KB gzip）都在需要时才下载。
 - 所有 Canvas 层按 `devicePixelRatio` 渲染，但根据视口面积与设备内存限制像素预算；大屏不会直接使用 2× 全屏位图，避免四层画布把内存放大到不可控。
 - 只绘制视口内的笔画；输入点会做最小距离过滤、结束时 RDP 简化，避免存储冗余点。
 - 缩略图使用 WebP 矢量重绘，保存时延迟生成；不保存整张画布位图。
@@ -269,6 +281,10 @@ Paligraph-Canvas/
 │  ├─ hooks/                      笔记持久化、主题、提示
 │  ├─ i18n/                       运行时 i18n
 │  ├─ lib/                        几何、笔迹、渲染、存储、导出
+│  │  ├─ math/solver.ts            一元一次方程与四则运算
+│  │  ├─ math/recognizer.ts        本地手写数字/符号识别
+│  │  ├─ shapes.ts                 基本图形识别与吸附
+│  │  └─ thumbnail.ts              Markdown/笔迹内容预览图
 │  ├─ state/                      Zustand 设置 store
 │  └─ styles/                     design tokens 与响应式样式
 ├─ index.html                     首屏主题/locale 预取 + 静态度量
@@ -285,7 +301,7 @@ npm test
 npm run build
 ```
 
-当前验证结果：**31 个单元测试通过**，TypeScript 严格模式无错误，生产构建成功。
+当前验证结果：**43 个单元测试通过**，TypeScript 严格模式无错误，生产构建成功。
 
 浏览器 QA 需要先运行 `npm run preview`，并使用本地 Edge/Chrome：
 
@@ -294,7 +310,9 @@ npm run qa              # 首次加载与基础 DOM
 npm run qa:interactions # 绘图、套索、移动/旋转、设置、导入、PDF
 npm run qa:touch        # CDP 双指长按平移、捏合缩放、快速误触
 npm run qa:features     # 荧光笔直线、橡皮、复制粘贴、设置 JSON、语言
-node scripts/qa-assets.mjs  # Obsidian 附件导入
+npm run qa:shapes-math  # 图形吸附、手写数学与竖式
+npm run qa:previews     # Markdown / Obsidian 内容预览图
+node scripts/qa-assets.mjs  # Obsidian 附件导入与图片 lightbox
 node scripts/qa-pdf.mjs     # 中文 PDF 导出
 ```
 
@@ -309,7 +327,10 @@ node scripts/qa-pdf.mjs     # 中文 PDF 导出
 - 导入的笔记是可编辑的阅读卡片，不是完整的 Obsidian 渲染器：嵌入图谱、Dataview、Canvas 等插件语法不会执行。
 - 目前没有云同步、协作或多设备合并；数据属于当前浏览器配置文件。
 - “双指长按”是故意设计的防误触机制；首次使用可能需要一两次适应。
+- 手写数学使用本地几何 + 字体骨架模板识别，不是神经网络 OCR；支持数字、`x`、四则运算和一元一次方程。识别结果始终可编辑，复杂排版或潦草字迹可能需要手动修正。
+- 基本图形纠正只处理直线、矩形、圆形/椭圆、三角形；不会自动纠正复杂图标或手写汉字。
 - 超大笔记（数千笔迹）在低端移动设备上仍可能需要降低缩放或关闭液态玻璃。DPR 预算会优先保证交互流畅。
+- 笔记列表内容预览图只内联 Vault 内的小图（data URL）；外链图片不会抓取，以保持本地优先和画布安全。
 - 应用清单已包含 manifest 与安装图标，但未注册 Service Worker，因此不承诺完整离线启动。
 
 ---

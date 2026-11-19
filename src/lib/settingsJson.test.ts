@@ -15,6 +15,8 @@ describe('settings JSON', () => {
     expect(DEFAULT_SETTINGS.penColor).toBe('#1f6feb');
     expect(DEFAULT_SETTINGS.defaultBackground.pattern).toBe('grid');
     expect(DEFAULT_SETTINGS.palmRejection).toBe(true);
+    expect(DEFAULT_SETTINGS.shapeRecognition).toBe(true);
+    expect(DEFAULT_SETTINGS.mathRecognition).toBe(true);
   });
 
   it('exports a versioned object without store actions', () => {
