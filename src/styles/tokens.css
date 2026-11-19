@@ -1,0 +1,141 @@
+/* ------------------------------------------------------------------ tokens */
+:root {
+  --font-display: "Segoe UI Variable Display", "Segoe UI", "Microsoft YaHei UI", "PingFang SC", "Noto Sans CJK SC", system-ui, sans-serif;
+  --font-text: "Segoe UI Variable Text", "Segoe UI", "Microsoft YaHei UI", "PingFang SC", "Noto Sans CJK SC", system-ui, sans-serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+  --font-mono: "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+
+  --sidebar-width: 294px;
+  --header-height: 70px;
+  --radius-xs: 6px;
+  --radius-sm: 9px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 26px;
+  --radius-2xl: 32px;
+
+  --ease-fluent: cubic-bezier(0.33, 0, 0, 1);
+  --ease-swift: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --glass-blur: 42px;
+  --glass-sat: 180%;
+  --glass-alpha: 0.7;
+  --glass-bg: rgba(251, 253, 255, 0.68);
+  --glass-bg-strong: rgba(252, 253, 255, 0.86);
+  --glass-border: rgba(255, 255, 255, 0.72);
+  --glass-highlight: rgba(255, 255, 255, 0.55);
+
+  --accent: #0f6cbd;
+  --accent-hover: #0a5ca4;
+  --accent-soft: rgba(15, 108, 189, 0.11);
+  --accent-soft-strong: rgba(15, 108, 189, 0.18);
+  --accent-ink: #ffffff;
+  --focus: #0f6cbd;
+
+  --danger: #c42b1c;
+  --danger-soft: rgba(196, 43, 28, 0.1);
+  --success: #0f7b4f;
+  --warning: #9a5d00;
+
+  --bg: #e9eef6;
+  --bg-deep: #dfe7f2;
+  --shell: rgba(244, 248, 253, 0.66);
+  --paper: #fbfcff;
+  --surface-1: rgba(255, 255, 255, 0.66);
+  --surface-2: rgba(24, 36, 52, 0.045);
+  --surface-3: rgba(24, 36, 52, 0.075);
+  --surface-solid: #f8fafd;
+  --panel: rgba(252, 253, 255, 0.94);
+  --sidebar-bg: rgba(245, 249, 254, 0.72);
+  --text: #172033;
+  --text-2: #4d5c72;
+  --text-3: #77859a;
+  --text-4: #9aa6b7;
+  --border: rgba(27, 41, 61, 0.09);
+  --border-strong: rgba(27, 41, 61, 0.16);
+  --hover: rgba(15, 108, 189, 0.07);
+  --active: rgba(15, 108, 189, 0.12);
+  --shadow-soft: 0 8px 26px rgba(34, 51, 76, 0.09);
+  --shadow-float: 0 20px 54px rgba(34, 51, 76, 0.18), 0 2px 6px rgba(34, 51, 76, 0.07);
+  --shadow-modal: 0 40px 100px rgba(15, 25, 40, 0.3), 0 3px 10px rgba(15, 25, 40, 0.12);
+  --shadow-paper: 0 2px 8px rgba(28, 43, 64, 0.06), 0 26px 80px rgba(28, 43, 64, 0.12);
+  --selection-bg: rgba(15, 108, 189, 0.18);
+  --scrollbar: rgba(58, 76, 102, 0.26);
+  --backdrop-tint: rgba(22, 34, 52, 0.28);
+
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --glass-bg: rgba(20, 28, 40, 0.66);
+  --glass-bg-strong: rgba(24, 33, 47, 0.84);
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --glass-highlight: rgba(255, 255, 255, 0.1);
+
+  --accent: #4cc2ff;
+  --accent-hover: #76d2ff;
+  --accent-soft: rgba(76, 194, 255, 0.13);
+  --accent-soft-strong: rgba(76, 194, 255, 0.2);
+  --accent-ink: #04131f;
+  --focus: #6dccff;
+
+  --danger: #ff99a4;
+  --danger-soft: rgba(255, 116, 132, 0.12);
+  --success: #7be0b6;
+  --warning: #ffd36b;
+
+  --bg: #090d14;
+  --bg-deep: #05080d;
+  --shell: rgba(12, 18, 27, 0.66);
+  --paper: #151b25;
+  --surface-1: rgba(255, 255, 255, 0.055);
+  --surface-2: rgba(255, 255, 255, 0.055);
+  --surface-3: rgba(255, 255, 255, 0.095);
+  --surface-solid: #1a2230;
+  --panel: rgba(22, 30, 43, 0.95);
+  --sidebar-bg: rgba(13, 20, 30, 0.74);
+  --text: #f0f5fc;
+  --text-2: #b1bfd2;
+  --text-3: #7f8da2;
+  --text-4: #5f6d81;
+  --border: rgba(255, 255, 255, 0.07);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --hover: rgba(255, 255, 255, 0.055);
+  --active: rgba(76, 194, 255, 0.14);
+  --shadow-soft: 0 8px 26px rgba(0, 0, 0, 0.28);
+  --shadow-float: 0 22px 60px rgba(0, 0, 0, 0.48), 0 2px 8px rgba(0, 0, 0, 0.32);
+  --shadow-modal: 0 44px 110px rgba(0, 0, 0, 0.62), 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-paper: 0 2px 8px rgba(0, 0, 0, 0.2), 0 30px 90px rgba(0, 0, 0, 0.28);
+  --selection-bg: rgba(76, 194, 255, 0.24);
+  --scrollbar: rgba(210, 225, 245, 0.24);
+  --backdrop-tint: rgba(0, 0, 0, 0.5);
+
+  color-scheme: dark;
+}
+
+[data-glass="off"] {
+  --glass-blur: 0px;
+  --glass-sat: 100%;
+  --glass-alpha: 1;
+  --glass-bg: var(--surface-solid);
+  --glass-bg-strong: var(--surface-solid);
+  --glass-border: var(--border-strong);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --glass-blur: 0px;
+    --glass-sat: 100%;
+    --glass-bg: var(--surface-solid);
+    --glass-bg-strong: var(--surface-solid);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ease-fluent: linear;
+    --ease-swift: linear;
+    --ease-spring: linear;
+  }
+}

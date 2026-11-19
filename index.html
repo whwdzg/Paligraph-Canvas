@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-glass="on">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b111a" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="description" content="Paligraph Canvas — a fast, local-first Fluent Design notebook for ink and markdown. Draw, annotate, import Obsidian vaults and export to PDF." />
+    <meta name="application-name" content="Paligraph Canvas" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Paligraph" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Paligraph Canvas</title>
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%icons/icon.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="%BASE_URL%icons/apple-touch-icon.png" />
+    <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+    <meta property="og:title" content="Paligraph Canvas" />
+    <meta property="og:description" content="Ideas, in ink. A Fluent Design notebook with pressure-sensitive drawing, markdown and Obsidian import." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="%BASE_URL%icons/icon-512.png" />
+    <script>
+      // Resolve the saved theme before first paint. The Zustand envelope is
+      // {state: {...}, version: 1}; malformed storage must never block startup.
+      (function () {
+        try {
+          var settings = (JSON.parse(localStorage.getItem('paligraph-settings') || '{}') || {}).state || {};
+          var choice = settings.theme || 'system';
+          var dark = choice === 'dark' || (choice === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var root = document.documentElement;
+          root.dataset.theme = dark ? 'dark' : 'light';
+          root.dataset.glass = settings.liquidGlass === false ? 'off' : 'on';
+          root.dataset.motion = settings.reduceMotion ? 'reduced' : 'full';
+          root.style.colorScheme = dark ? 'dark' : 'light';
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', dark ? '#0b111a' : '#e9eef6');
+        } catch (error) {}
+      })();
+
+      // Start the locale request in parallel with the JS bundle. This mirrors
+      // the loading strategy used by Asteria Player, but keeps the JSON small.
+      (function () {
+        try {
+          var settings = (JSON.parse(localStorage.getItem('paligraph-settings') || '{}') || {}).state || {};
+          var pref = settings.language || 'system';
+          var builtIn = { 'zh-CN': 1, 'zh-TW': 1, 'en': 1, 'ja': 1 };
+          if (pref === 'system') {
+            var langs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'en'];
+            pref = 'en';
+            for (var i = 0; i < langs.length; i += 1) {
+              var tag = String(langs[i]).toLowerCase();
+              if (tag.indexOf('zh') === 0) { pref = /hant|tw|hk|mo/.test(tag) ? 'zh-TW' : 'zh-CN'; break; }
+              if (tag.indexOf('ja') === 0) { pref = 'ja'; break; }
+              if (tag.indexOf('en') === 0) { pref = 'en'; break; }
+            }
+          }
+          if (builtIn[pref]) {
+            // Fetch immediately and hand the promise to the React i18n provider.
+            // This starts the locale request before the module graph is ready
+            // without the credential-mode mismatch of an <link rel=preload>.
+            var url = '%BASE_URL%locales/' + pref + '.json' + (location.search.indexOf('__update') !== -1 ? '?__update=' + Date.now() : '');
+            window.__PALIGRAPH_LOCALE_CODE = pref;
+            window.__PALIGRAPH_LOCALE = fetch(url, { credentials: 'same-origin' }).then(function (response) {
+              if (!response.ok) throw new Error('HTTP ' + response.status);
+              return response.json();
+            });
+            window.__PALIGRAPH_LOCALE.catch(function () {});
+          }
+        } catch (error) {}
+      })();
+    </script>
+    <style>
+      html, body { margin: 0; height: 100%; background: #0b111a; }
+      #root { height: 100%; }
+      #boot { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #0b111a; color: #f2f6fd; font: 600 14px "Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif; text-align: center; }
+      #boot img { width: 72px; height: 72px; border-radius: 19px; box-shadow: 0 20px 60px rgba(0,0,0,.45); }
+      #boot strong { font-size: 22px; letter-spacing: -.02em; font-weight: 650; }
+      #boot .bar { width: 116px; height: 3px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.12); }
+      #boot .bar span { display: block; width: 42%; height: 100%; border-radius: inherit; background: #4cc2ff; animation: boot 1.2s cubic-bezier(.33,0,0,1) infinite; }
+      @keyframes boot { from { transform: translateX(-120%); } to { transform: translateX(340%); } }
+      @media (prefers-color-scheme: light) {
+        html, body, #boot { background: #e9eef6; color: #172033; }
+        #boot .bar { background: rgba(23,32,51,.12); }
+        #boot .bar span { background: #0f6cbd; }
+      }
+      html[data-theme="light"] #boot { background: #e9eef6; color: #172033; }
+      html[data-theme="light"] #boot .bar { background: rgba(23,32,51,.12); }
+      html[data-theme="light"] #boot .bar span { background: #0f6cbd; }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div id="boot" role="status" aria-live="polite">
+        <img src="%BASE_URL%icons/icon.svg" alt="" width="72" height="72" />
+        <strong>Paligraph Canvas</strong>
+        <div class="bar" aria-hidden="true"><span></span></div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

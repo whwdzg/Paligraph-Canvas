@@ -1,0 +1,10 @@
+node_modules/
+dist/
+dist-pages/
+.tmp-pages/
+.vite/
+screenshots/
+*.log
+*.tsbuildinfo
+*.tmpdir/
+.DS_Store

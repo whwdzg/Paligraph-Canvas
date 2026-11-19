@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Paligraph Canvas">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a1528"/>
+      <stop offset="0.46" stop-color="#123d7a"/>
+      <stop offset="1" stop-color="#0a2346"/>
+    </linearGradient>
+    <radialGradient id="glowA" cx="0.16" cy="0.06" r="0.7">
+      <stop offset="0" stop-color="#58d9ff" stop-opacity="0.72"/>
+      <stop offset="0.55" stop-color="#1c8dff" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#1c8dff" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowB" cx="1" cy="0.92" r="0.66">
+      <stop offset="0" stop-color="#ff8a72" stop-opacity="0.55"/>
+      <stop offset="0.62" stop-color="#ff5e7e" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#ff5e7e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ink" x1="0.25" y1="0.1" x2="0.8" y2="0.95">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.58" stop-color="#eef7ff"/>
+      <stop offset="1" stop-color="#c5e6ff"/>
+    </linearGradient>
+    <linearGradient id="marker" x1="0" y1="0.5" x2="1" y2="0.5">
+      <stop offset="0" stop-color="#ffcf4a" stop-opacity="0.12"/>
+      <stop offset="0.25" stop-color="#ffd76a" stop-opacity="0.82"/>
+      <stop offset="0.78" stop-color="#ffbe3d" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#ffbe3d" stop-opacity="0.08"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="0.52" stop-color="#ffffff" stop-opacity="0.04"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <pattern id="dots" width="58" height="58" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="2.2" fill="#cfe8ff" opacity="0.24"/>
+    </pattern>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <clipPath id="squircle">
+      <rect x="24" y="24" width="976" height="976" rx="224" ry="224"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#squircle)">
+    <rect x="24" y="24" width="976" height="976" fill="url(#bg)"/>
+    <rect x="24" y="24" width="976" height="976" fill="url(#dots)"/>
+    <circle cx="238" cy="132" r="360" fill="url(#glowA)"/>
+    <circle cx="930" cy="934" r="360" fill="url(#glowB)"/>
+    <path d="M-80 840 C 175 690 318 824 528 748 C 690 690 800 740 1104 600" fill="none" stroke="#ffffff" stroke-opacity="0.05" stroke-width="2"/>
+    <path d="M-40 900 C 210 760 350 880 560 810 C 740 750 840 790 1100 690" fill="none" stroke="#ffffff" stroke-opacity="0.04" stroke-width="2"/>
+
+    <path d="M232 652 C 352 590 498 634 642 594 C 726 570 786 566 836 582"
+      fill="none" stroke="url(#marker)" stroke-width="112" stroke-linecap="round"/>
+    <path d="M232 652 C 352 590 498 634 642 594 C 726 570 786 566 836 582"
+      fill="none" stroke="#ffd76a" stroke-opacity="0.18" stroke-width="128" stroke-linecap="round"/>
+
+    <path d="M338 798 C 335 642 339 470 342 374 C 345 290 402 236 490 236 C 598 236 667 302 667 396 C 667 492 598 558 490 558 C 430 558 378 528 346 486"
+      fill="none" stroke="#05101f" stroke-opacity="0.4" stroke-width="92" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 20)" filter="url(#soft)"/>
+    <path d="M338 798 C 335 642 339 470 342 374 C 345 290 402 236 490 236 C 598 236 667 302 667 396 C 667 492 598 558 490 558 C 430 558 378 528 346 486"
+      fill="none" stroke="url(#ink)" stroke-width="78" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M351 760 C 350 610 354 470 356 386 C 359 314 411 270 487 270"
+      fill="none" stroke="#ffffff" stroke-opacity="0.55" stroke-width="11" stroke-linecap="round"/>
+
+    <circle cx="742" cy="290" r="25" fill="#ff8a72" filter="url(#glow)"/>
+    <circle cx="742" cy="290" r="12" fill="#ffd8ce"/>
+    <circle cx="812" cy="252" r="6" fill="#bfe8ff" opacity="0.85"/>
+    <circle cx="850" cy="304" r="4" fill="#bfe8ff" opacity="0.55"/>
+
+    <rect x="24" y="24" width="976" height="976" fill="url(#shine)" opacity="0.5"/>
+    <rect x="25" y="25" width="974" height="974" rx="223" ry="223" fill="none" stroke="#ffffff" stroke-opacity="0.2" stroke-width="2"/>
+  </g>
+</svg>

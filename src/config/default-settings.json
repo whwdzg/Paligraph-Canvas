@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "settings": {
+    "theme": "system",
+    "language": "system",
+    "liquidGlass": true,
+    "reduceMotion": false,
+    "palmRejection": true,
+    "pressureSensitivity": 0.72,
+    "penVariant": "pen",
+    "penColor": "#1f6feb",
+    "penSize": 4,
+    "highlighterColor": "#ffd60a",
+    "highlighterSize": 22,
+    "highlighterMode": "free",
+    "eraserMode": "stroke",
+    "eraserSize": 24,
+    "defaultBackground": {
+      "pattern": "grid",
+      "lineStyle": "solid",
+      "spacing": 32,
+      "opacity": 0.14,
+      "color": ""
+    },
+    "showCanvasHints": true
+  }
+}
