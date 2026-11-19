@@ -403,6 +403,17 @@ export default function App() {
     if (next) setInspector(null);
   }, []);
 
+  const handleSelectionMath = (): void => {
+    if (!activeNote || !selection?.ids.length) return;
+    const ids = new Set(selection.ids);
+    const selected = activeNote.strokes.filter(
+      (stroke) => stroke.tool !== 'eraser' && ids.has(stroke.id),
+    );
+    if (!selected.length) return;
+    setMathStrokes(selected);
+    surfaceRef.current?.deselect();
+  };
+
   const handleExportNote = async (note: Note, format: NoteExportFormat): Promise<void> => {
     if (!note || exporting) return;
     setExporting(true);
@@ -736,7 +747,6 @@ export default function App() {
                 onViewScaleChange={setScale}
                 onToast={showToast}
                 onToolChange={updateTool}
-                onMathRequest={setMathStrokes}
                 onImagePreview={(src, alt) => setPreviewImage({ src, alt })}
               />
 
@@ -762,6 +772,8 @@ export default function App() {
                   onDeselect={() => {
                     surfaceRef.current?.deselect();
                   }}
+                  onMath={handleSelectionMath}
+                  mathEnabled={settings.mathRecognition}
                 />
               ) : null}
 

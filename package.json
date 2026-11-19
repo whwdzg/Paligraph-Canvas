@@ -1,7 +1,7 @@
 {
   "name": "paligraph-canvas",
   "private": true,
-  "version": "1.7.0",
+  "version": "1.8.0",
   "type": "module",
   "description": "Paligraph Canvas — a Fluent Design web notebook for thinking in ink and markdown.",
   "homepage": "https://whwdzg.github.io/Paligraph-Canvas/",
@@ -39,6 +39,7 @@
     "jspdf": "^3.0.4",
     "katex": "^0.16.47",
     "marked": "^16.4.2",
+    "mathjs": "^14.9.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "zustand": "^5.1.0"

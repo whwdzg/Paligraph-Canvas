@@ -103,10 +103,19 @@ await strokePath([[574, 160], [610, 160], [609, 177], [588, 179], [580, 200], [6
 await page.waitForTimeout(450);
 await page.screenshot({ path: 'screenshots/math-handwriting.png' });
 
-// Long-press the first digit without moving.
-await page.mouse.move(box.x + 304, box.y + 209);
+// Select all handwritten math with the lasso, then use the floating math action.
+await page.locator('.tool-button[aria-label="选择"]').click();
+await page.mouse.move(box.x + 270, box.y + 130);
 await page.mouse.down();
-await page.waitForTimeout(700);
+for (const [x, y] of [[270, 130], [660, 120], [670, 240], [270, 250], [270, 130]]) {
+  await page.mouse.move(box.x + x, box.y + y, { steps: 4 });
+  await page.waitForTimeout(12);
+}
+await page.mouse.up();
+await page.waitForTimeout(450);
+await page.screenshot({ path: 'screenshots/math-selection.png' });
+const selectionToolbar = await page.locator('.selection-toolbar').count();
+await page.locator('.selection-action.is-math').click();
 let modalVisible = 0;
 try {
   await page.waitForSelector('.math-modal', { timeout: 5000 });
@@ -115,7 +124,6 @@ try {
   modalVisible = 0;
 }
 if (modalVisible) {
-  await page.mouse.up();
   await page.waitForTimeout(400);
   await page.screenshot({ path: 'screenshots/math-dialog-auto.png' });
   const recognized = await page.locator('#math-expression').inputValue().catch(() => '');
@@ -126,6 +134,21 @@ if (modalVisible) {
   await page.waitForTimeout(300);
   const equationAnswer = await page.locator('.math-answer > strong').textContent().catch(() => '');
   await page.screenshot({ path: 'screenshots/math-dialog-equation.png' });
+
+  await page.locator('#math-expression').fill('x + y = 5; x - y = 1');
+  await page.waitForTimeout(300);
+  const systemAnswer = await page.locator('.math-answer > strong').textContent().catch(() => '');
+  await page.screenshot({ path: 'screenshots/math-dialog-system.png' });
+
+  await page.locator('#math-expression').fill('d/dx(x^3 + 2x)');
+  await page.waitForTimeout(300);
+  const derivativeAnswer = await page.locator('.math-answer > strong').textContent().catch(() => '');
+
+  await page.locator('#math-expression').fill('sum(n^2, n=1..10)');
+  await page.waitForTimeout(300);
+  const sumAnswer = await page.locator('.math-answer > strong').textContent().catch(() => '');
+  await page.screenshot({ path: 'screenshots/math-dialog-advanced.png' });
+
   await page.locator('#math-expression').fill('23 + 45');
   await page.waitForTimeout(250);
   const columnTab = page.getByRole('radio', { name: '竖式' });
@@ -134,9 +157,8 @@ if (modalVisible) {
   const columnAnswer = await page.locator('.math-answer > strong').textContent().catch(() => '');
   const columnWorking = await page.locator('.vertical-work').count();
   await page.screenshot({ path: 'screenshots/math-dialog-column.png' });
-  console.log(JSON.stringify({ shapeHint, shapeText: shapeText?.trim(), strokesAfterShape, modalVisible, recognized, equationAnswer, columnAnswer, columnWorking, errors }, null, 2));
+  console.log(JSON.stringify({ shapeHint, shapeText: shapeText?.trim(), strokesAfterShape, selectionToolbar, modalVisible, recognized, equationAnswer, systemAnswer, derivativeAnswer, sumAnswer, columnAnswer, columnWorking, errors }, null, 2));
 } else {
-  console.log(JSON.stringify({ shapeHint, shapeText: shapeText?.trim(), strokesAfterShape, modalVisible, errors }, null, 2));
+  console.log(JSON.stringify({ shapeHint, shapeText: shapeText?.trim(), strokesAfterShape, selectionToolbar, modalVisible, errors }, null, 2));
 }
-await page.mouse.up().catch(() => {});
 await browser.close();

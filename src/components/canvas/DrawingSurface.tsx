@@ -24,10 +24,8 @@ import {
 } from '../../lib/renderer';
 import {
   boundsCenter,
-  boundsIntersect,
   clamp,
   distance,
-  expandBounds,
   pointsBounds,
   rotatePoint,
   simplifyPoints,
@@ -37,7 +35,6 @@ import {
   cloneStrokes,
   createId,
   finishStroke,
-  hitTestStroke,
   imagesInLasso,
   makeSelection,
   strokeIntersectsEraser,
@@ -173,14 +170,6 @@ interface ShapeCandidate {
   interaction: DrawInteraction;
 }
 
-interface MathPress {
-  pointerId: number;
-  startX: number;
-  startY: number;
-  timer: number;
-  strokes: Stroke[];
-}
-
 interface ShapeHint {
   kind: ShapeKind;
   x: number;
@@ -220,7 +209,6 @@ interface DrawingSurfaceProps {
   onViewScaleChange: (scale: number) => void;
   onToast: (message: string) => void;
   onToolChange: (tool: InkTool) => void;
-  onMathRequest: (strokes: Stroke[]) => void;
   onImagePreview: (src: string, alt: string) => void;
 }
 
@@ -314,7 +302,6 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     onViewScaleChange,
     onToast,
     onToolChange,
-    onMathRequest,
     onImagePreview,
   },
   ref,
@@ -372,15 +359,12 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     onViewScaleChange,
     onToast,
     onToolChange,
-    onMathRequest,
     onImagePreview,
   });
   const [gesturing, setGesturing] = useState(false);
   const [shapeHint, setShapeHint] = useState<ShapeHint | null>(null);
-  const [mathHoldAt, setMathHoldAt] = useState<{ x: number; y: number } | null>(null);
   const shapeCandidateRef = useRef<ShapeCandidate | null>(null);
   const shapeTimerRef = useRef<number | null>(null);
-  const mathPressRef = useRef<MathPress | null>(null);
 
   backgroundRef.current = note.background;
   themeRef.current = theme;
@@ -394,7 +378,6 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     onViewScaleChange,
     onToast,
     onToolChange,
-    onMathRequest,
     onImagePreview,
   };
 
@@ -1089,13 +1072,6 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     if (hadCandidate && redrawLive) markDirty({ live: true });
   }, [clearShapeTimer, markDirty]);
 
-  const cancelMathPress = useCallback(() => {
-    const press = mathPressRef.current;
-    if (press) window.clearTimeout(press.timer);
-    mathPressRef.current = null;
-    setMathHoldAt(null);
-  }, []);
-
   const abortTransientInteraction = useCallback(() => {
     drawRef.current = null;
     eraseRef.current = null;
@@ -1114,55 +1090,6 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     rootRef.current?.removeAttribute('data-drawing');
     markDirty({ media: true, ink: true, live: true, overlay: true });
   }, [clearShapeTimer, markDirty]);
-
-  const findMathCluster = useCallback((world: InkPoint): Stroke[] | null => {
-    const slop = 14 / viewRef.current.scale;
-    const hit = strokesRef.current.find((stroke) => hitTestStroke(stroke, world.x, world.y, { slop }));
-    if (!hit) return null;
-    const cluster: Stroke[] = [hit];
-    let area = strokeBounds(hit);
-    const gap = Math.max(30, hit.size * 5);
-    let changed = true;
-    while (changed && cluster.length < 180) {
-      changed = false;
-      const searchArea = expandBounds(area, gap);
-      for (const stroke of strokesRef.current) {
-        if (stroke.tool === 'eraser' || cluster.includes(stroke)) continue;
-        if (!boundsIntersect(searchArea, strokeBounds(stroke))) continue;
-        cluster.push(stroke);
-        area = unionBounds(area, strokeBounds(stroke)) ?? area;
-        changed = true;
-        if (cluster.length >= 180) break;
-      }
-    }
-    return cluster;
-  }, []);
-
-  const scheduleMathPress = useCallback(
-    (pointerId: number, screenX: number, screenY: number, world: InkPoint) => {
-      cancelMathPress();
-      if (!settingsRef.current.mathRecognition) return;
-      const cluster = findMathCluster(world);
-      if (!cluster) return;
-      const press: MathPress = {
-        pointerId,
-        startX: screenX,
-        startY: screenY,
-        timer: 0,
-        strokes: cluster,
-      };
-      setMathHoldAt({ x: screenX, y: screenY });
-      press.timer = window.setTimeout(() => {
-        if (mathPressRef.current !== press) return;
-        mathPressRef.current = null;
-        setMathHoldAt(null);
-        abortTransientInteraction();
-        callbacksRef.current.onMathRequest(cluster);
-      }, 560);
-      mathPressRef.current = press;
-    },
-    [abortTransientInteraction, cancelMathPress, findMathCluster],
-  );
 
   const scheduleShapeRecognition = useCallback(
     (interaction: DrawInteraction) => {
@@ -1551,9 +1478,8 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
   }, []);
 
   const cancelInteractions = useCallback(() => {
-    cancelMathPress();
     abortTransientInteraction();
-  }, [abortTransientInteraction, cancelMathPress]);
+  }, [abortTransientInteraction]);
 
   const cancelGestureCandidate = useCallback(() => {
     const candidate = gestureCandidateRef.current;
@@ -1563,7 +1489,6 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
 
   const beginGestureCandidate = useCallback(() => {
     cancelGestureCandidate();
-    cancelMathPress();
     cancelInteractions();
     const points = [...touchPointersRef.current.values()];
     if (points.length < 2) return;
@@ -1683,13 +1608,11 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
         beginErase(event.pointerId, screen.x, screen.y, 'stroke');
         return;
       }
-      if (currentTool !== 'eraser') scheduleMathPress(event.pointerId, screen.x, screen.y, world);
       if (selection) {
         if (currentTool === 'lasso') {
           const geometry = selectionScreenGeometry(selection, viewRef.current);
           if (distance(screen.x, screen.y, geometry.rotateHandle.x, geometry.rotateHandle.y) <= 18) {
             event.preventDefault();
-            cancelMathPress();
             beginSelectionInteraction(event.pointerId, world, 'rotate', selection);
             return;
           }
@@ -1735,10 +1658,8 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       beginPan,
       beginSelectionInteraction,
       cancelInteractions,
-      cancelMathPress,
       localPoint,
       pressureFor,
-      scheduleMathPress,
       setSelection,
       updateCursor,
       worldPoint,
@@ -1751,14 +1672,6 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       pointerScreenRef.current = screen;
       updateCursor(screen.x, screen.y, event.pointerType || 'mouse', true);
       const pointerType = event.pointerType || 'mouse';
-      const mathPress = mathPressRef.current;
-      if (
-        mathPress &&
-        mathPress.pointerId === event.pointerId &&
-        distance(screen.x, screen.y, mathPress.startX, mathPress.startY) > 7
-      ) {
-        cancelMathPress();
-      }
 
       if (pointerType === 'touch' && touchPointersRef.current.has(event.pointerId)) {
         touchPointersRef.current.set(event.pointerId, screen);
@@ -1831,7 +1744,6 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       appendErasePoint,
       appendLassoPoint,
       cancelGestureCandidate,
-      cancelMathPress,
       localPoint,
       pressureFor,
       setView,
@@ -1844,7 +1756,6 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
 
   const releasePointer = useCallback(
     (event: ReactPointerEvent<HTMLDivElement>, cancelled: boolean) => {
-      cancelMathPress();
       const pointerType = event.pointerType || 'mouse';
       if (pointerType === 'touch') {
         if (ignoredTouchesRef.current.delete(event.pointerId)) return;
@@ -1888,7 +1799,6 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     [
       cancelGestureCandidate,
       cancelInteractions,
-      cancelMathPress,
       endGesture,
       endPan,
       finishDraw,
@@ -1931,8 +1841,6 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     () => () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       if (shapeTimerRef.current !== null) window.clearTimeout(shapeTimerRef.current);
-      const press = mathPressRef.current;
-      if (press) window.clearTimeout(press.timer);
       cancelGestureCandidate();
     },
     [cancelGestureCandidate],
@@ -1981,12 +1889,6 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       <canvas ref={liveCanvasRef} className="canvas-layer canvas-live" aria-hidden="true" />
       <canvas ref={overlayCanvasRef} className="canvas-layer canvas-overlay" aria-hidden="true" />
       <div ref={cursorRef} className="brush-cursor" data-visible="false" aria-hidden="true" />
-      {mathHoldAt ? (
-        <div className="math-hold-indicator" style={{ left: mathHoldAt.x, top: mathHoldAt.y }}>
-          <span className="math-hold-pulse" aria-hidden="true" />
-          {t('math.hold')}
-        </div>
-      ) : null}
       {shapeHint ? (
         <div className="shape-hint" style={{ left: shapeHint.x, top: shapeHint.y }}>
           <Sparkle24Filled />

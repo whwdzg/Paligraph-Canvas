@@ -264,7 +264,7 @@
   "appearance.shape": "图形纠正",
   "appearance.shapeHint": "画完基本图形后按住笔尖停留，可自动纠正为直线、矩形、圆形或三角形。",
   "appearance.math": "手写数学",
-  "appearance.mathHint": "长按笔迹以识别方程式或竖式并求解。",
+  "appearance.mathHint": "用套索选中笔迹，然后点击浮动工具条中的数学按钮进行识别。",
   "image.preview": "图片预览",
   "math.equationTrue": "等式成立。",
   "math.equationFalse": "等式不成立。",
@@ -368,5 +368,8 @@
   "pwa.installUnavailable": "当前浏览器不支持直接安装，可在“设置 → 安装”查看方法。",
   "backup.chip": "备份 · {count} 笔",
   "backup.hint": "浏览器可能清理本地数据，建议定期导出 .paligraph 可编辑文件。",
-  "backup.reminder": "本笔记已有 {count} 笔。浏览器可能清理本地数据，建议定期导出为可编辑文件。"
+  "backup.reminder": "本笔记已有 {count} 笔。浏览器可能清理本地数据，建议定期导出为可编辑文件。",
+  "math.advancedHint": "支持未知数、用分号分隔的方程组、d/dx 求导、sum(...,n=1..10) 求和、log10 与 exp。",
+  "math.examples": "示例",
+  "math.recognizeSelection": "识别所选数学公式"
 }

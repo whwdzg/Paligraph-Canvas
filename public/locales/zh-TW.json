@@ -264,7 +264,7 @@
   "appearance.shape": "圖形糾正",
   "appearance.shapeHint": "畫完基本圖形後按住筆尖停留，可自動糾正為直線、矩形、圓形或三角形。",
   "appearance.math": "手寫數學",
-  "appearance.mathHint": "長按筆跡以辨識方程式或直式並求解。",
+  "appearance.mathHint": "用套索選取筆跡，然後點擊浮動工具列中的數學按鈕進行辨識。",
   "image.preview": "圖片預覽",
   "math.equationTrue": "等式成立。",
   "math.equationFalse": "等式不成立。",
@@ -368,5 +368,8 @@
   "pwa.installUnavailable": "目前瀏覽器不支援直接安裝，可在「設定 → 安裝」查看方式。",
   "backup.chip": "備份 · {count} 筆",
   "backup.hint": "瀏覽器可能清理本機資料，建議定期匯出 .paligraph 可編輯檔案。",
-  "backup.reminder": "本筆記已有 {count} 筆。瀏覽器可能清理本機資料，建議定期匯出為可編輯檔案。"
+  "backup.reminder": "本筆記已有 {count} 筆。瀏覽器可能清理本機資料，建議定期匯出為可編輯檔案。",
+  "math.advancedHint": "支援未知數、以分號分隔的方程組、d/dx 求導、sum(...,n=1..10) 求和、log10 與 exp。",
+  "math.examples": "範例",
+  "math.recognizeSelection": "辨識所選數學公式"
 }

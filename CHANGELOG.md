@@ -2,6 +2,27 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.8.0] — 2026-11-20
+
+### Selection-based math recognition
+
+- Handwritten math is now recognised by selecting the formula with the lasso and pressing the math button in the selection toolbar. The old long-press shortcut has been removed.
+- The recogniser now includes common variables (`x/y/z/a/b/c/n/t`), powers, parentheses, `Σ`, `π`, `√` and multi-row detection for systems of equations.
+- Raising a smaller digit after a variable is treated as a power where the geometry is unambiguous.
+- Math dialog examples can be inserted with one click.
+
+### Advanced math engine
+
+- Replaced the tiny linear parser with a lazy Math.js-backed engine.
+- Supports one-variable linear equations and numeric real roots (quadratic, logarithmic, exponential), linear systems such as `x+y=5; x-y=1`, symbolic derivatives, finite sums, logarithms/exponents and variable expression simplification.
+- `log10`/`log2` and LaTeX-style fractions, roots and summation notation are normalised before solving.
+- Math.js and its 192 KB gzip chunk load only when the math dialog opens.
+
+### Internal
+
+- Added selection-toolbar math action, recognizer templates, advanced solver tests and updated math QA.
+- Bumped package/app version to 1.8.0.
+
 ## [1.7.0] — 2026-11-20
 
 ### Local backup reminder

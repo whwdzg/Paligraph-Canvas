@@ -16,6 +16,7 @@ const MASK_SIZE = 32;
 const GLYPH_CANVAS = 64;
 const OPERATORS = new Set(['+', '-', '×', '÷', '=']);
 const DIGITS = new Set('0123456789'.split(''));
+const VARIABLES = new Set(['x', 'y', 'z', 'a', 'b', 'c', 'n', 't', 'd']);
 
 export interface MathGlyph {
   symbol: string;
@@ -303,7 +304,11 @@ function templates(): TemplateMask[] {
     '600 34px "Segoe UI", "Microsoft YaHei UI", sans-serif',
     '700 33px Georgia, "Times New Roman", serif',
   ];
-  const symbols = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '-', '×', '÷', '=', '*'];
+  const symbols = [
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+    '+', '-', '×', '÷', '=', '*', '/', '^', '(', ')', 'Σ', 'π', '√',
+    'x', 'y', 'z', 'a', 'b', 'c', 'n', 't', 'd',
+  ];
   const result: TemplateMask[] = [];
   for (const font of fonts) {
     for (const symbol of symbols) {
@@ -392,7 +397,14 @@ function recognizeGroup(group: Group): MathGlyph | null {
   if (!mask.some((value) => value === 1)) return null;
   const scores = compareMasks(mask, aspect);
   if (!scores.length) return null;
-  const best = scores[0];
+  let best = scores[0];
+  // Digits and some lower-case letters (notably 2/z) share a skeleton. Prefer
+  // a digit when the score is within a small margin; this keeps ordinary
+  // arithmetic reliable while still allowing distinct x/y/z glyphs through.
+  const bestDigit = scores.find((item) => DIGITS.has(item.symbol));
+  if (bestDigit && VARIABLES.has(best.symbol) && bestDigit.score <= best.score + 0.12) {
+    best = bestDigit;
+  }
   const second = scores.find((item) => item.symbol !== best.symbol);
   const separation = second ? Math.max(0, second.score - best.score) : 0.5;
   const confidence = clamp(0.8 - best.score * 0.075 + separation * 0.08, 0.08, 0.97);
@@ -426,7 +438,22 @@ function rowsFromGlyphs(glyphs: MathGlyph[]): MathGlyph[][] {
 }
 
 function rowText(row: MathGlyph[]): string {
-  return row.map((glyph) => glyph.symbol).join('');
+  let text = '';
+  for (let index = 0; index < row.length; index += 1) {
+    const glyph = row[index];
+    const previous = row[index - 1];
+    // A smaller, raised digit after a variable is much more likely an
+    // exponent than an implicit product. This is deliberately conservative.
+    const superscript =
+      previous &&
+      (VARIABLES.has(previous.symbol) || previous.symbol === ')') &&
+      DIGITS.has(glyph.symbol) &&
+      glyph.height < previous.height * 0.74 &&
+      glyph.bounds.maxY < previous.bounds.maxY - previous.height * 0.08;
+    if (superscript) text += '^';
+    text += glyph.symbol;
+  }
+  return text;
 }
 
 function isSeparatorRow(row: MathGlyph[]): boolean {
@@ -478,8 +505,10 @@ function verticalFromRows(rows: MathGlyph[][]): VerticalMath | null {
  * symbol at the start, after an operator, or before an operator is x.
  */
 function resolveMultiplication(symbols: string[]): string {
-  const isValueEnd = (symbol: string | undefined): boolean => Boolean(symbol && (DIGITS.has(symbol) || symbol === ')' || symbol === 'x'));
-  const isValueStart = (symbol: string | undefined): boolean => Boolean(symbol && (DIGITS.has(symbol) || symbol === '(' || symbol === 'x'));
+  const isValueEnd = (symbol: string | undefined): boolean =>
+    Boolean(symbol && (DIGITS.has(symbol) || symbol === ')' || VARIABLES.has(symbol)));
+  const isValueStart = (symbol: string | undefined): boolean =>
+    Boolean(symbol && (DIGITS.has(symbol) || symbol === '(' || VARIABLES.has(symbol)));
   return symbols
     .map((symbol, index) => {
       if (symbol !== '×' && symbol !== '*') return symbol;
@@ -514,6 +543,20 @@ export function recognizeMathStrokes(strokes: readonly Stroke[]): MathRecognitio
       expression: vertical.expression,
       layout: 'vertical',
       vertical,
+      confidence: glyphs.reduce((sum, glyph) => sum + glyph.confidence, 0) / glyphs.length,
+      warnings: glyphs.some((glyph) => glyph.confidence < 0.75) ? ['Low confidence characters; please correct the expression.'] : [],
+    };
+  }
+
+  // Multiple aligned rows that each contain an equals sign form a system of
+  // equations. The editable field uses semicolons as the canonical separator.
+  const equationRows = rows.filter((row) => row.some((glyph) => glyph.symbol === '='));
+  if (rows.length > 1 && equationRows.length === rows.length) {
+    const expression = rows.map(rowText).join(';');
+    return {
+      glyphs,
+      expression,
+      layout: 'horizontal',
       confidence: glyphs.reduce((sum, glyph) => sum + glyph.confidence, 0) / glyphs.length,
       warnings: glyphs.some((glyph) => glyph.confidence < 0.75) ? ['Low confidence characters; please correct the expression.'] : [],
     };

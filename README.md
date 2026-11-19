@@ -3,7 +3,7 @@
 **灵感，落于笔尖。** A local-first notebook for ink, Markdown and the ideas in between.
 
 [![Deploy to GitHub Pages](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml/badge.svg)](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml)
-![Version](https://img.shields.io/badge/version-1.7.0-2b7fff)
+![Version](https://img.shields.io/badge/version-1.8.0-2b7fff)
 ![License](https://img.shields.io/badge/license-GPL--3.0--or--later-4c1)
 
 Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布、一套接近 Apple Notes 的悬浮工具栏、Fluent Design Sun Valley 的材质，以及可选的液态玻璃（liquid glass）质感。它把笔迹数据和 Markdown 都留在这台设备上，并可以在需要时导出为 PDF 或 Markdown。
@@ -18,7 +18,7 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 
 | 图形纠正 | 手写数学 |
 | --- | --- |
-| ![画完后按住识别矩形](docs/shape-recognition.png) | ![长按笔迹求解](docs/handwriting-math.png) |
+| ![画完后按住识别矩形](docs/shape-recognition.png) | ![选中笔迹后求解数学](docs/handwriting-math.png) |
 | ![画布图片与选区](docs/canvas-images.png) | ![PNG/SVG/可编辑笔记导出](docs/export-menu.png) |
 | ![Obsidian 层级文件夹](docs/folders.png) | ![Markdown LaTeX 渲染](docs/latex.png) |
 | ![侧栏 PWA 安装提示](docs/pwa.png) | ![设置中的安装引导](docs/pwa-settings.png) |
@@ -38,14 +38,30 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 - 笔触渲染细节：压感双端平滑、两端自然收锋、毛笔鬃毛、铅笔/蜡笔颗粒、荧光笔柔边。
 - 画笔选项中的预览使用与画布相同的 Canvas 渲染器，直接展示当前颜色、粗细和纹理。
 - 荧光笔支持自由绘制与**直线**两种模式，颜色、宽度独立设置。
-
-![钢笔、铅笔、蜡笔与毛笔的笔触效果](docs/ink.png)
 - **基本图形纠正**：画完直线、矩形、圆形/椭圆或三角形后按住笔尖停留，松手时自动吸附为干净图形。
-- **手写数学**：长按已有笔迹约 0.56 秒，识别一元一次方程、四则运算和简单竖式；识别结果可在对话框中直接修正并实时求解。
+- **手写数学**：用套索选中笔迹后点击浮动工具条的数学按钮；支持未知数、方程组、求导、求和、对数、指数等高级运算，识别结果可修正并实时求解。
 - 橡皮支持**按笔迹擦**（整条笔画）与**像素擦**（只擦除触及区域），也可以一键清空画布。
 - 手写笔适配：Pointer Events 压感、合并事件、手掌防误触、笔杆侧键临时切换为橡皮。
 - 双指**长按约 260 ms** 后移动可平移画布，捏合可缩放；快速双指触碰不会误移画布。
 - 空格 + 拖动、鼠标中键、触控板滚动都可以移动画布；`Ctrl/⌘ + 滚轮`以指针为中心缩放。
+
+![钢笔、铅笔、蜡笔与毛笔的笔触效果](docs/ink.png)
+
+### 手写数学与高级运算
+
+- **选择后识别**：用套索圈选公式笔迹，点击浮动工具条的数学按钮；不再依赖长按。
+- 识别器支持数字、变量 `x/y/z/a/b/c/n/t`、四则运算、幂、括号、`Σ`、`π`、`√` 等常见符号。
+- 求解对话框支持：
+  - 一元一次方程与数值实根（包括二次、对数、指数方程）
+  - 线性方程组，例如 `x+y=5; x-y=1`
+  - 符号求导，例如 `d/dx(x^3+2x)`
+  - 有限求和，例如 `sum(n^2,n=1..10)` 或 `Σ(n^2,n=1..10)`
+  - 对数与指数，例如 `log10(100)+exp(1)`
+  - 未知数表达式化简
+- 对话框内置示例按钮，识别结构不完整时可以直接修正表达式。
+- Math.js 计算引擎只随数学对话框按需加载，不影响首屏。
+
+![高级手写数学与示例](docs/handwriting-math.png)
 
 ### 选择与编辑
 
@@ -119,7 +135,7 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 - Chrome/Edge 检测到可安装时会捕获浏览器安装提示，并在侧栏显示低调的安装引导；也可以从 **设置 → 关于** 随时查看安装状态和步骤。
 - 安装后使用独立窗口与图标启动，IndexedDB 笔记与浏览器版本互通。
 - Service Worker 会预缓存应用外壳、所有按需模块、语言包、图标和 KaTeX 字体；安装后即使断网也能重新打开应用和已有笔记。
-- 使用 `autoUpdate` 策略，新版本发布后下一次打开会更新缓存；首次安装缓存约 2.3 MB。
+- 使用 `autoUpdate` 策略，新版本发布后下一次打开会更新缓存；首次安装缓存约 2.9 MB。
 - 如果浏览器不支持自动安装，设置页会显示对应浏览器的手动安装步骤。
 
 ### 多语言与数据
@@ -149,7 +165,7 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 npm install
 npm run dev        # http://localhost:4173
 npm run typecheck  # TypeScript
-npm test           # Vitest · 59 tests
+npm test           # Vitest · 61 tests
 npm run build      # 生产构建到 dist/
 npm run preview    # 预览构建，端口 4173
 ```
@@ -214,7 +230,7 @@ $env:GITHUB_ACTIONS='true'; npm run build
 | `Ctrl/⌘ + 滚轮` | 以指针为中心缩放 |
 | `N` | 新建笔记 |
 | 画完图形后按住 | 停顿约 0.62 秒纠正为基本图形 |
-| 长按已有笔迹 | 打开手写数学求解（约 0.56 秒） |
+| 套索选中后点击数学按钮 | 识别、修正并求解所选数学公式 |
 
 ### 触控与手写笔
 
@@ -304,8 +320,8 @@ $env:GITHUB_ACTIONS='true'; npm run build
 ### 性能策略
 
 - 首屏只加载 React、Canvas UI 与应用状态；Markdown 渲染器、Obsidian 扫描器、jsPDF 都是按需 chunk。
-- 当前构建首屏 JS gzip 约 **127 KB**，CSS gzip 约 **15 KB**，语言包约 **5 KB**；手写数学识别器、Markdown + KaTeX 渲染器（约 100 KB gzip，KaTeX CSS 约 8 KB gzip）、SVG/PNG 编码与导出模块（jsPDF 约 121 KB gzip）都在需要时才下载。
-- PWA 首次安装的 Workbox 预缓存约 **2.3 MB**，包含所有按需模块、字体与语言包；之后由 `autoUpdate` 在后台更新。
+- 当前构建首屏 JS gzip 约 **128 KB**，CSS gzip 约 **16 KB**，语言包约 **5 KB**；手写数学识别器、Math.js 数学引擎（约 192 KB gzip）、Markdown + KaTeX 渲染器（约 100 KB gzip，KaTeX CSS 约 8 KB gzip）、SVG/PNG 编码与导出模块（jsPDF 约 121 KB gzip）都在需要时才下载。
+- PWA 首次安装的 Workbox 预缓存约 **2.9 MB**，包含所有按需模块、字体与语言包；之后由 `autoUpdate` 在后台更新。
 - 画布图片使用解码缓存（最多 24 张），离屏/缩略图导出按需解码；插入时大图会先缩小，避免把原始相机照片长期留在内存。
 - 所有 Canvas 层按 `devicePixelRatio` 渲染，但根据视口面积与设备内存限制像素预算；大屏不会直接使用 2× 全屏位图，避免四层画布把内存放大到不可控。
 - 只绘制视口内的笔画；输入点会做最小距离过滤、结束时 RDP 简化，避免存储冗余点。
@@ -370,7 +386,7 @@ npm test
 npm run build
 ```
 
-当前验证结果：**59 个单元测试通过**，TypeScript 严格模式无错误，生产构建成功。
+当前验证结果：**61 个单元测试通过**，TypeScript 严格模式无错误，生产构建成功。
 
 浏览器 QA 需要先运行 `npm run preview`，并使用本地 Edge/Chrome：
 
@@ -379,7 +395,7 @@ npm run qa              # 首次加载与基础 DOM
 npm run qa:interactions # 绘图、套索、移动/旋转、设置、导入、PDF
 npm run qa:touch        # CDP 双指长按平移、捏合缩放、快速误触
 npm run qa:features     # 荧光笔直线、橡皮、复制粘贴、设置 JSON、语言
-npm run qa:shapes-math  # 图形吸附、手写数学与竖式
+npm run qa:shapes-math  # 选择识别、图形吸附、高级数学与竖式
 npm run qa:previews     # Markdown / Obsidian 内容预览图
 npm run qa:storage      # 设置中的存储占用读数和明细
 npm run qa:folders      # 文件夹、多选移动/删除、笔记菜单导出
@@ -403,7 +419,7 @@ node scripts/qa-pdf.mjs     # 中文 PDF 导出
 - 导入的笔记是可编辑的阅读卡片，不是完整的 Obsidian 渲染器：嵌入图谱、Dataview、Canvas 等插件语法不会执行。
 - 目前没有云同步、协作或多设备合并；数据属于当前浏览器配置文件。
 - “双指长按”是故意设计的防误触机制；首次使用可能需要一两次适应。
-- 手写数学使用本地几何 + 字体骨架模板识别，不是神经网络 OCR；支持数字、`x`、四则运算和一元一次方程。识别结果始终可编辑，复杂排版或潦草字迹可能需要手动修正。
+- 手写数学使用本地几何 + 字体骨架模板识别，不是神经网络 OCR。支持数字、常用变量、四则运算、幂、`Σ`、`π`、`√` 等符号；方程组、求导、求和等复杂结构仍可能需要手动修正。求解端支持线性方程组、符号求导、有限求和、对数/指数和单变量方程数值根，不代表完整的计算机代数系统。
 - Markdown 数学公式使用 KaTeX 的常用 LaTeX 子集；少数非 KaTeX 命令会显示错误标记。KaTeX 只用于阅读卡片，PDF/Markdown 导出保留原始 LaTeX 源码，不会把公式重新排版成数学字体。
 - 导入 Obsidian 文件夹时，选中的 vault 根文件夹也会保留为顶层文件夹；若要合并到现有结构，可在导入后移动笔记。
 - 基本图形纠正只处理直线、矩形、圆形/椭圆、三角形；不会自动纠正复杂图标或手写汉字。

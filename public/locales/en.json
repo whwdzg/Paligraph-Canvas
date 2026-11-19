@@ -264,7 +264,7 @@
   "appearance.shape": "Shape correction",
   "appearance.shapeHint": "Hold the pen still after drawing to snap lines, rectangles, circles and triangles.",
   "appearance.math": "Handwriting maths",
-  "appearance.mathHint": "Long-press ink to recognise an equation or vertical sum.",
+  "appearance.mathHint": "Select ink with the lasso, then tap the math button in the floating toolbar.",
   "image.preview": "Image preview",
   "math.equationTrue": "The equation is true.",
   "math.equationFalse": "The equation is not true.",
@@ -368,5 +368,8 @@
   "pwa.installUnavailable": "Installation is not available in this browser. Use Settings → Install for instructions.",
   "backup.chip": "Back up · {count}",
   "backup.hint": "Browsers can clear local data. Export an editable .paligraph backup regularly.",
-  "backup.reminder": "This note has {count} ink strokes. Browsers can clear local data, so export an editable file regularly."
+  "backup.reminder": "This note has {count} ink strokes. Browsers can clear local data, so export an editable file regularly.",
+  "math.advancedHint": "Variables, systems with ;, d/dx derivatives, sum(...,n=1..10), log10 and exp are supported.",
+  "math.examples": "Examples",
+  "math.recognizeSelection": "Recognize selected math"
 }

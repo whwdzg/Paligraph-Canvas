@@ -4,6 +4,7 @@ import {
   Delete24Regular,
   Dismiss24Regular,
   DocumentCopy24Regular,
+  MathFormula24Regular,
 } from '@fluentui/react-icons';
 import { useI18n } from '../../i18n/I18nProvider';
 import type { Selection } from '../../lib/types';
@@ -15,15 +16,37 @@ interface SelectionToolbarProps {
   onRotate: () => void;
   onDelete: () => void;
   onDeselect: () => void;
+  onMath: () => void;
+  mathEnabled: boolean;
 }
 
-export function SelectionToolbar({ selection, onDuplicate, onCopy, onRotate, onDelete, onDeselect }: SelectionToolbarProps) {
+export function SelectionToolbar({
+  selection,
+  onDuplicate,
+  onCopy,
+  onRotate,
+  onDelete,
+  onDeselect,
+  onMath,
+  mathEnabled,
+}: SelectionToolbarProps) {
   const { t } = useI18n();
   return (
     <div className="selection-toolbar glass-surface" role="toolbar" aria-label={t('selection.label')}>
       <span className="selection-count">{t('selection.count', { count: selection.ids.length + selection.imageIds.length })}</span>
       <span className="selection-hint">{t('selection.dragHint')}</span>
       <span className="dock-divider" aria-hidden="true" />
+      {mathEnabled && selection.ids.length ? (
+        <button
+          type="button"
+          className="selection-action is-math"
+          onClick={onMath}
+          aria-label={t('math.recognizeSelection')}
+          data-tooltip={t('math.recognizeSelection')}
+        >
+          <MathFormula24Regular />
+        </button>
+      ) : null}
       <button type="button" className="selection-action" onClick={onCopy} aria-label={t('selection.copy')} data-tooltip={t('selection.copy')}>
         <Copy24Regular />
       </button>

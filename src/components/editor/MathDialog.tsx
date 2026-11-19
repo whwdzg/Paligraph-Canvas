@@ -22,6 +22,13 @@ interface ArithmeticParts {
   value: number;
 }
 
+const ADVANCED_EXAMPLES = [
+  { label: 'x+y=5; x−y=1', value: 'x+y=5;x-y=1' },
+  { label: 'd/dx(x³+2x)', value: 'd/dx(x^3+2x)' },
+  { label: 'Σ n² · 1…10', value: 'sum(n^2,n=1..10)' },
+  { label: 'log₁₀(100)+e', value: 'log10(100)+exp(1)' },
+];
+
 function parseSimpleArithmetic(input: string): ArithmeticParts | null {
   const normalized = normalizeMathInput(input);
   const match = normalized.match(/^(\d+(?:\.\d+)?)([+\-*/])(\d+(?:\.\d+)?)$/);
@@ -191,6 +198,22 @@ export function MathDialog({ strokes, onClose, onToast }: MathDialogProps) {
             />
           </div>
           <p className="math-hint">{t('math.editHint')}</p>
+          <p className="math-hint math-advanced-hint">{t('math.advancedHint')}</p>
+          <div className="math-examples" aria-label={t('math.examples')}>
+            <span>{t('math.examples')}</span>
+            {ADVANCED_EXAMPLES.map((example) => (
+              <button
+                key={example.value}
+                type="button"
+                onClick={() => {
+                  setExpression(example.value);
+                  setMode('equation');
+                }}
+              >
+                {example.label}
+              </button>
+            ))}
+          </div>
 
           {arithmetic ? (
             <Segmented
@@ -217,7 +240,7 @@ export function MathDialog({ strokes, onClose, onToast }: MathDialogProps) {
                 <span className="math-answer-label">{t('math.answer')}</span>
                 <strong>{solution.result}</strong>
               </>
-            ) : solution.kind === 'equation' ? (
+            ) : solution.kind === 'equation' || solution.kind === 'system' || solution.kind === 'derivative' || solution.kind === 'sum' || solution.kind === 'expression' ? (
               <>
                 <span className="math-answer-label">{t('math.answer')}</span>
                 <strong>{solution.result}</strong>

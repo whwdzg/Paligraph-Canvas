@@ -264,7 +264,7 @@
   "appearance.shape": "図形補正",
   "appearance.shapeHint": "基本図形を描いたあとペンを止めると、直線・長方形・円・三角形に補正します。",
   "appearance.math": "手書き数学",
-  "appearance.mathHint": "インクを長押しして方程式や筆算を認識・計算します。",
+  "appearance.mathHint": "投げ縄でインクを選択し、フローティングツールバーの数式ボタンを押して認識します。",
   "image.preview": "画像プレビュー",
   "math.equationTrue": "等式が成り立ちます。",
   "math.equationFalse": "等式が成り立ちません。",
@@ -368,5 +368,8 @@
   "pwa.installUnavailable": "このブラウザーでは直接インストールできません。「設定 → インストール」を確認してください。",
   "backup.chip": "バックアップ · {count}",
   "backup.hint": "ブラウザーがローカルデータを消去する場合があります。定期的に .paligraph を書き出してください。",
-  "backup.reminder": "このノートには {count} 本のインクがあります。ブラウザーがローカルデータを消去する場合があるため、定期的に編集可能ファイルを書き出してください。"
+  "backup.reminder": "このノートには {count} 本のインクがあります。ブラウザーがローカルデータを消去する場合があるため、定期的に編集可能ファイルを書き出してください。",
+  "math.advancedHint": "未知数、セミコロン区切りの連立方程式、d/dx の微分、sum(...,n=1..10)、log10、exp に対応します。",
+  "math.examples": "例",
+  "math.recognizeSelection": "選択した数式を認識"
 }
