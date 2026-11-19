@@ -10,6 +10,7 @@ import { ToolDock } from './components/editor/ToolDock';
 import { ToolOptions } from './components/editor/ToolOptions';
 import { BackgroundPanel } from './components/editor/BackgroundPanel';
 import { SelectionToolbar } from './components/editor/SelectionToolbar';
+import { ShapePicker } from './components/editor/ShapePicker';
 import { ZoomControls } from './components/editor/ZoomControls';
 import { EmptyCanvasHint } from './components/editor/EmptyCanvasHint';
 import { SourcePanel } from './components/editor/SourcePanel';
@@ -39,6 +40,7 @@ import type {
   NoteFolder,
   Selection,
   Settings,
+  ShapeKind,
   Stroke,
 } from './lib/types';
 import type { ImportedMarkdownNote } from './lib/obsidian';
@@ -140,6 +142,7 @@ export default function App() {
   const [importOpen, setImportOpen] = useState(false);
   const [sourceOpen, setSourceOpen] = useState(false);
   const [backgroundOpen, setBackgroundOpen] = useState(false);
+  const [shapePickerOpen, setShapePickerOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [noteToDelete, setNoteToDelete] = useState<Note | null>(null);
   const [folderFilter, setFolderFilter] = useState<FolderFilter>('all');
@@ -164,6 +167,7 @@ export default function App() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const toolDockRef = useRef<HTMLDivElement>(null);
   const toolOptionsRef = useRef<HTMLDivElement>(null);
+  const shapePickerRef = useRef<HTMLDivElement>(null);
   const backgroundPanelRef = useRef<HTMLDivElement>(null);
   const backgroundButtonRef = useRef<HTMLButtonElement>(null);
   const lastSaveErrorRef = useRef(false);
@@ -239,12 +243,16 @@ export default function App() {
   const closeFloatingSurfaces = useCallback(() => {
     setInspector(null);
     setBackgroundOpen(false);
+    setShapePickerOpen(false);
   }, []);
 
   useClickOutside(
-    [toolDockRef, toolOptionsRef],
-    () => setInspector(null),
-    Boolean(inspector),
+    [toolDockRef, toolOptionsRef, shapePickerRef],
+    () => {
+      setInspector(null);
+      setShapePickerOpen(false);
+    },
+    Boolean(inspector) || shapePickerOpen,
   );
   useClickOutside(
     [backgroundPanelRef, backgroundButtonRef],
@@ -256,6 +264,7 @@ export default function App() {
     setSelection(null);
     setInspector(null);
     setBackgroundOpen(false);
+    setShapePickerOpen(false);
     setSourceOpen(false);
     setHintDismissed(false);
     setSidebarOpen(false);
@@ -305,6 +314,10 @@ export default function App() {
       if (target?.closest('input, textarea, select, [contenteditable="true"], .modal-backdrop, .source-panel')) return;
       if (document.querySelector('.modal-backdrop')) return;
       if (event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.key === 'Escape' && shapePickerOpen) {
+        setShapePickerOpen(false);
+        return;
+      }
       if (event.key.toLowerCase() === 'n' && !settingsOpen && !importOpen && !sourceOpen) {
         event.preventDefault();
         createNote();
@@ -312,7 +325,7 @@ export default function App() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [createNote, importOpen, settingsOpen, sourceOpen]);
+  }, [createNote, importOpen, shapePickerOpen, settingsOpen, sourceOpen]);
 
   const updateTool = useCallback((next: InkTool) => {
     setTool(next);
@@ -321,6 +334,7 @@ export default function App() {
 
   const handleToolSelect = (next: InkTool) => {
     setTool(next);
+    setShapePickerOpen(false);
     if (next === 'lasso') {
       setInspector(null);
       return;
@@ -328,7 +342,19 @@ export default function App() {
     setInspector((current) => (current === next ? null : next));
   };
 
+  const handleShapes = (): void => {
+    setShapePickerOpen((open) => !open);
+    setInspector(null);
+    setBackgroundOpen(false);
+  };
+
+  const handleInsertShape = (kind: ShapeKind): void => {
+    surfaceRef.current?.insertShape(kind);
+    setShapePickerOpen(false);
+  };
+
   const handleColorSelect = () => {
+    setShapePickerOpen(false);
     if (tool === 'lasso') {
       setTool('pen');
       setInspector('pen');
@@ -714,6 +740,7 @@ export default function App() {
               onToggleBackground={() => {
                 setBackgroundOpen((open) => !open);
                 setInspector(null);
+                setShapePickerOpen(false);
               }}
               onOpenSettings={() => openSettings()}
               onExportPdf={() => void handleExportNote(activeNote, 'pdf')}
@@ -785,11 +812,18 @@ export default function App() {
                     canUndo={history.undo}
                     canRedo={history.redo}
                     optionsOpen={Boolean(inspector)}
+                    shapesOpen={shapePickerOpen}
                     onToolSelect={handleToolSelect}
+                    onShapes={handleShapes}
                     onColorSelect={handleColorSelect}
                     onUndo={() => surfaceRef.current?.undo()}
                     onRedo={() => surfaceRef.current?.redo()}
                   />
+                </div>
+                <div ref={shapePickerRef} className="shape-picker-anchor">
+                  {shapePickerOpen ? (
+                    <ShapePicker onSelect={handleInsertShape} onClose={() => setShapePickerOpen(false)} />
+                  ) : null}
                 </div>
                 {inspector && !selection ? (
                   <div ref={toolOptionsRef} className="tool-options-anchor">

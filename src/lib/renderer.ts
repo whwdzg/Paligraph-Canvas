@@ -6,6 +6,7 @@ import {
   pointsBounds,
   rotatePoint,
 } from './geometry';
+import { isOpenShape } from './shapes';
 import { strokeBounds } from './strokes';
 import type {
   BackgroundSettings,
@@ -105,6 +106,138 @@ function paperColor(theme: ResolvedTheme): string {
   return theme === 'light' ? PAPER_LIGHT : PAPER_DARK;
 }
 
+function niceAxisStep(scale: number): number {
+  const raw = 64 / Math.max(0.1, scale);
+  const exponent = Math.floor(Math.log10(raw));
+  const magnitude = 10 ** exponent;
+  const normalized = raw / magnitude;
+  const factor = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+  return factor * magnitude;
+}
+
+function formatAxisNumber(value: number): string {
+  const rounded = Math.round(value * 1000) / 1000;
+  if (Object.is(rounded, -0)) return '0';
+  if (Math.abs(rounded) >= 10000) return rounded.toExponential(1).replace('e+', 'e');
+  return String(rounded);
+}
+
+function drawAxes(
+  ctx: CanvasRenderingContext2D,
+  background: BackgroundSettings,
+  theme: ResolvedTheme,
+  view: ViewTransform,
+  width: number,
+  height: number,
+): void {
+  const originX = view.x;
+  const originY = view.y;
+  const onScreenX = originX >= -1 && originX <= width + 1;
+  const onScreenY = originY >= -1 && originY <= height + 1;
+  if (!onScreenX && !onScreenY) return;
+
+  const color = background.color || (theme === 'light' ? '#53657d' : '#cad7e7');
+  const alpha = clamp(background.opacity + 0.26, 0.28, 0.86);
+  const step = niceAxisStep(view.scale);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  ctx.lineWidth = 1.35;
+  ctx.setLineDash([]);
+  ctx.font = '10px "Segoe UI Variable", "Segoe UI", sans-serif';
+  ctx.textBaseline = 'middle';
+
+  if (onScreenY) {
+    ctx.beginPath();
+    ctx.moveTo(0, Math.round(originY) + 0.5);
+    ctx.lineTo(width, Math.round(originY) + 0.5);
+    ctx.stroke();
+  }
+  if (onScreenX) {
+    ctx.beginPath();
+    ctx.moveTo(Math.round(originX) + 0.5, 0);
+    ctx.lineTo(Math.round(originX) + 0.5, height);
+    ctx.stroke();
+  }
+
+  const leftWorld = (0 - view.x) / view.scale;
+  const rightWorld = (width - view.x) / view.scale;
+  const topWorld = (0 - view.y) / view.scale;
+  const bottomWorld = (height - view.y) / view.scale;
+  const firstX = Math.ceil(leftWorld / step) * step;
+  const firstY = Math.ceil(topWorld / step) * step;
+
+  if (onScreenY) {
+    for (let value = firstX; value <= rightWorld + step * 0.01; value += step) {
+      if (Math.abs(value) < step * 0.001) continue;
+      const x = view.x + value * view.scale;
+      ctx.beginPath();
+      ctx.moveTo(x, originY - 4);
+      ctx.lineTo(x, originY + 4);
+      ctx.stroke();
+      if (originY + 16 < height) {
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(formatAxisNumber(value), x, originY + 9);
+        ctx.textBaseline = 'middle';
+      }
+    }
+  }
+
+  if (onScreenX) {
+    for (let value = firstY; value <= bottomWorld + step * 0.01; value += step) {
+      if (Math.abs(value) < step * 0.001) continue;
+      const y = view.y + value * view.scale;
+      ctx.beginPath();
+      ctx.moveTo(originX - 4, y);
+      ctx.lineTo(originX + 4, y);
+      ctx.stroke();
+      if (originX - 8 > 8) {
+        ctx.textAlign = 'right';
+        ctx.fillText(formatAxisNumber(value), originX - 7, y);
+      }
+    }
+  }
+
+  // Direction arrowheads and axis labels.
+  if (onScreenY) {
+    const tipX = width - 9;
+    ctx.beginPath();
+    ctx.moveTo(tipX, originY);
+    ctx.lineTo(tipX - 7, originY - 4);
+    ctx.lineTo(tipX - 7, originY + 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('x', width - 4, originY - 7);
+  }
+  if (onScreenX) {
+    const tipY = 9;
+    ctx.beginPath();
+    ctx.moveTo(originX, tipY);
+    ctx.lineTo(originX - 4, tipY + 7);
+    ctx.lineTo(originX + 4, tipY + 7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('y', originX + 7, 4);
+  }
+
+  if (onScreenX && onScreenY) {
+    ctx.beginPath();
+    ctx.arc(originX, originY, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText('O', originX + 6, originY + 7);
+  }
+
+  ctx.restore();
+}
+
 /**
  * Draws the infinite paper. Patterns are generated in screen space so lines
  * stay perfectly crisp at every zoom level; the spacing snaps to powers of two
@@ -137,6 +270,12 @@ export function drawBackground(
   ctx.fillRect(0, 0, width, height);
 
   if (background.pattern === 'blank') {
+    ctx.restore();
+    return;
+  }
+
+  if (background.pattern === 'axes') {
+    drawAxes(ctx, background, theme, view, width, height);
     ctx.restore();
     return;
   }
@@ -360,7 +499,15 @@ export function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke): void 
     ctx.globalAlpha = clamp(stroke.opacity, 0.15, 1);
     ctx.lineWidth = Math.max(0.8, stroke.size);
     ctx.beginPath();
-    if (stroke.shape === 'ellipse') {
+    if (stroke.shape === 'cross') {
+      // A cross is stored as two independent diagonals: TL→BR and TR→BL.
+      if (points.length >= 4) {
+        ctx.moveTo(points[0].x, points[0].y);
+        ctx.lineTo(points[1].x, points[1].y);
+        ctx.moveTo(points[2].x, points[2].y);
+        ctx.lineTo(points[3].x, points[3].y);
+      }
+    } else if (stroke.shape === 'ellipse' || stroke.shape === 'circle') {
       for (let i = 0; i < points.length; i += 1) {
         if (i === 0) ctx.moveTo(points[i].x, points[i].y);
         else ctx.lineTo(points[i].x, points[i].y);
@@ -369,7 +516,7 @@ export function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke): void 
     } else {
       ctx.moveTo(points[0].x, points[0].y);
       for (let i = 1; i < points.length; i += 1) ctx.lineTo(points[i].x, points[i].y);
-      if (stroke.shape !== 'line') ctx.closePath();
+      if (!isOpenShape(stroke.shape)) ctx.closePath();
     }
     ctx.stroke();
     ctx.restore();

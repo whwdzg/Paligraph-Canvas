@@ -12,9 +12,23 @@ export type PenVariant = 'pen' | 'pencil' | 'crayon' | 'brush';
 export type InkTool = 'pen' | 'highlighter' | 'eraser' | 'lasso';
 export type HighlighterMode = 'free' | 'straight';
 export type EraserMode = 'stroke' | 'pixel';
-export type PaperPattern = 'blank' | 'grid' | 'dots' | 'ruled';
+export type PaperPattern = 'blank' | 'grid' | 'dots' | 'ruled' | 'axes';
 export type PaperLineStyle = 'solid' | 'dashed';
-export type ShapeKind = 'line' | 'rectangle' | 'ellipse' | 'triangle';
+export type ShapeKind =
+  | 'line'
+  | 'arrow'
+  | 'rectangle'
+  | 'square'
+  | 'ellipse'
+  | 'circle'
+  | 'triangle'
+  | 'equilateralTriangle'
+  | 'diamond'
+  | 'star'
+  | 'pentagon'
+  | 'hexagon'
+  | 'check'
+  | 'cross';
 
 export interface InkPoint {
   /** World-space coordinates. */

@@ -371,5 +371,20 @@
   "backup.reminder": "This note has {count} ink strokes. Browsers can clear local data, so export an editable file regularly.",
   "math.advancedHint": "Variables, systems with ;, d/dx derivatives, sum(...,n=1..10), log10 and exp are supported.",
   "math.examples": "Examples",
-  "math.recognizeSelection": "Recognize selected math"
+  "math.recognizeSelection": "Recognize selected math",
+  "shape.arrow": "Arrow",
+  "shape.square": "Square",
+  "shape.circle": "Circle",
+  "shape.equilateralTriangle": "Equilateral triangle",
+  "shape.diamond": "Diamond",
+  "shape.star": "Star",
+  "shape.pentagon": "Pentagon",
+  "shape.hexagon": "Hexagon",
+  "shape.check": "Check",
+  "shape.cross": "Cross",
+  "shapes.title": "Insert shape",
+  "shapes.eyebrow": "Shape library",
+  "shapes.hint": "Click a shape to place it at the centre of the canvas. It is selected so you can move, resize and rotate it.",
+  "background.axes": "Axes",
+  "background.axesHint": "Shows numbered axes, the origin and the positive x/y directions."
 }

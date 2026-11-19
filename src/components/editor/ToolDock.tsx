@@ -5,6 +5,7 @@ import {
   Highlight24Regular,
   Lasso24Regular,
   Pen24Regular,
+  Shapes24Regular,
 } from '@fluentui/react-icons';
 import { useI18n } from '../../i18n/I18nProvider';
 import type { InkTool } from '../../lib/types';
@@ -15,7 +16,9 @@ interface ToolDockProps {
   canUndo: boolean;
   canRedo: boolean;
   optionsOpen: boolean;
+  shapesOpen: boolean;
   onToolSelect: (tool: InkTool) => void;
+  onShapes: () => void;
   onColorSelect: () => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -35,7 +38,9 @@ export function ToolDock({
   canUndo,
   canRedo,
   optionsOpen,
+  shapesOpen,
   onToolSelect,
+  onShapes,
   onColorSelect,
   onUndo,
   onRedo,
@@ -65,6 +70,17 @@ export function ToolDock({
           );
         })}
       </div>
+
+      <button
+        type="button"
+        className={`tool-button tool-shapes ${shapesOpen ? 'is-soft' : ''}`.trim()}
+        onClick={onShapes}
+        aria-label={t('shapes.title')}
+        aria-pressed={shapesOpen}
+        data-tooltip={t('shapes.title')}
+      >
+        <Shapes24Regular />
+      </button>
 
       <span className="dock-divider" aria-hidden="true" />
 

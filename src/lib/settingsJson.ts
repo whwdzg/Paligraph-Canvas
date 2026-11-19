@@ -23,7 +23,7 @@ const THEMES = new Set<ThemeChoice>(['system', 'light', 'dark']);
 const PEN_VARIANTS = new Set<PenVariant>(['pen', 'pencil', 'crayon', 'brush']);
 const HIGHLIGHTER_MODES = new Set<HighlighterMode>(['free', 'straight']);
 const ERASER_MODES = new Set<EraserMode>(['stroke', 'pixel']);
-const PATTERNS = new Set<BackgroundSettings['pattern']>(['blank', 'grid', 'dots', 'ruled']);
+const PATTERNS = new Set<BackgroundSettings['pattern']>(['blank', 'grid', 'dots', 'ruled', 'axes']);
 const LINE_STYLES = new Set<BackgroundSettings['lineStyle']>(['solid', 'dashed']);
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 

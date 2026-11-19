@@ -16,6 +16,7 @@ const PATTERNS: Array<{ value: PaperPattern; labelKey: string }> = [
   { value: 'grid', labelKey: 'background.grid' },
   { value: 'dots', labelKey: 'background.dots' },
   { value: 'ruled', labelKey: 'background.ruled' },
+  { value: 'axes', labelKey: 'background.axes' },
 ];
 
 export function BackgroundControls({ value, onChange, onReset }: BackgroundControlsProps) {
@@ -40,6 +41,7 @@ export function BackgroundControls({ value, onChange, onReset }: BackgroundContr
           </button>
         ))}
       </div>
+      {value.pattern === 'axes' ? <p className="background-hint">{t('background.axesHint')}</p> : null}
 
       <div className="option-section">
         <span className="field-label">{t('background.lineStyle')}</span>

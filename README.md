@@ -3,7 +3,7 @@
 **灵感，落于笔尖。** A local-first notebook for ink, Markdown and the ideas in between.
 
 [![Deploy to GitHub Pages](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml/badge.svg)](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml)
-![Version](https://img.shields.io/badge/version-1.8.0-2b7fff)
+![Version](https://img.shields.io/badge/version-1.9.0-2b7fff)
 ![License](https://img.shields.io/badge/license-GPL--3.0--or--later-4c1)
 
 Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布、一套接近 Apple Notes 的悬浮工具栏、Fluent Design Sun Valley 的材质，以及可选的液态玻璃（liquid glass）质感。它把笔迹数据和 Markdown 都留在这台设备上，并可以在需要时导出为 PDF 或 Markdown。
@@ -38,7 +38,8 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 - 笔触渲染细节：压感双端平滑、两端自然收锋、毛笔鬃毛、铅笔/蜡笔颗粒、荧光笔柔边。
 - 画笔选项中的预览使用与画布相同的 Canvas 渲染器，直接展示当前颜色、粗细和纹理。
 - 荧光笔支持自由绘制与**直线**两种模式，颜色、宽度独立设置。
-- **基本图形纠正**：画完直线、矩形、圆形/椭圆或三角形后按住笔尖停留，松手时自动吸附为干净图形。
+- **图形纠正**：画完直线、矩形、正方形、正圆、椭圆、三角形、正三角形、菱形、五角星、勾或叉后按住笔尖停留，松手时自动吸附为干净图形。
+- **插入图形**：底部工具栏新增图形库，包含直线、箭头、矩形、正方形、椭圆、正圆、三角形、正三角形、菱形、五角星、五边形、六边形、勾、叉；插入后自动选中，可移动、旋转、缩放。
 - **手写数学**：用套索选中笔迹后点击浮动工具条的数学按钮；支持未知数、方程组、求导、求和、对数、指数等高级运算，识别结果可修正并实时求解。
 - 橡皮支持**按笔迹擦**（整条笔画）与**像素擦**（只擦除触及区域），也可以一键清空画布。
 - 手写笔适配：Pointer Events 压感、合并事件、手掌防误触、笔杆侧键临时切换为橡皮。
@@ -62,6 +63,16 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 - Math.js 计算引擎只随数学对话框按需加载，不影响首屏。
 
 ![高级手写数学与示例](docs/handwriting-math.png)
+
+### 图形库与图形纠正
+
+- 底部工具栏的图形按钮打开 14 种常用图形，点击即可放到画布中心。
+- 插入的图形是普通笔迹对象，使用当前钢笔颜色、粗细和笔触；自动进入套索选中状态，可直接拖动、旋转、复制或撤销。
+- 图形纠正覆盖：直线、箭头、矩形、正方形、正圆、椭圆、三角形、正三角形、菱形、五角星、勾、叉。
+- 图形使用存储的精确顶点而不是近似笔迹，因此放大、旋转、SVG 导出都保持锐利。
+- 勾、箭头和叉使用开放路径；叉绘制为两条独立对角线，不会出现额外的连接线。
+
+![插入图形面板](docs/shapes.png)
 
 ### 选择与编辑
 
@@ -124,8 +135,11 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 
 - 浅色 / 深色 / 跟随系统三种主题，切换即时生效。
 - 可选液态玻璃材质；关闭后使用实色 Fluent 层，降低 GPU 合成开销。
-- 背景支持**空白、网格、圆点、横线**；线条支持实线/虚线；可调间距、透明度、色调。
+- 背景支持**空白、网格、圆点、横线、数学坐标轴**；线条支持实线/虚线；可调间距、透明度、色调。
+- **数学坐标轴**背景显示带数字的刻度、原点 `O`、x/y 正方向箭头；随平移和缩放保持清晰，并会进入 PNG/PDF/SVG 导出。
 - 每篇笔记独立背景，也可以把当前背景保存为新笔记默认值。
+
+![数学坐标轴背景](docs/axes.png)
 - 减少动态效果、画布提示、压感灵敏度、防误触、图形纠正与手写数学均可配置。
 - 所有 UI 图标来自 [Microsoft Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons)（MIT）。
 
@@ -165,7 +179,7 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 npm install
 npm run dev        # http://localhost:4173
 npm run typecheck  # TypeScript
-npm test           # Vitest · 61 tests
+npm test           # Vitest · 63 tests
 npm run build      # 生产构建到 dist/
 npm run preview    # 预览构建，端口 4173
 ```
@@ -320,7 +334,7 @@ $env:GITHUB_ACTIONS='true'; npm run build
 ### 性能策略
 
 - 首屏只加载 React、Canvas UI 与应用状态；Markdown 渲染器、Obsidian 扫描器、jsPDF 都是按需 chunk。
-- 当前构建首屏 JS gzip 约 **128 KB**，CSS gzip 约 **16 KB**，语言包约 **5 KB**；手写数学识别器、Math.js 数学引擎（约 192 KB gzip）、Markdown + KaTeX 渲染器（约 100 KB gzip，KaTeX CSS 约 8 KB gzip）、SVG/PNG 编码与导出模块（jsPDF 约 121 KB gzip）都在需要时才下载。
+- 当前构建首屏 JS gzip 约 **131 KB**，CSS gzip 约 **16 KB**，语言包约 **5 KB**；手写数学识别器、Math.js 数学引擎（约 192 KB gzip）、Markdown + KaTeX 渲染器（约 100 KB gzip，KaTeX CSS 约 8 KB gzip）、SVG/PNG 编码与导出模块（jsPDF 约 121 KB gzip）都在需要时才下载。
 - PWA 首次安装的 Workbox 预缓存约 **2.9 MB**，包含所有按需模块、字体与语言包；之后由 `autoUpdate` 在后台更新。
 - 画布图片使用解码缓存（最多 24 张），离屏/缩略图导出按需解码；插入时大图会先缩小，避免把原始相机照片长期留在内存。
 - 所有 Canvas 层按 `devicePixelRatio` 渲染，但根据视口面积与设备内存限制像素预算；大屏不会直接使用 2× 全屏位图，避免四层画布把内存放大到不可控。
@@ -386,7 +400,7 @@ npm test
 npm run build
 ```
 
-当前验证结果：**61 个单元测试通过**，TypeScript 严格模式无错误，生产构建成功。
+当前验证结果：**63 个单元测试通过**，TypeScript 严格模式无错误，生产构建成功。
 
 浏览器 QA 需要先运行 `npm run preview`，并使用本地 Edge/Chrome：
 
@@ -396,6 +410,7 @@ npm run qa:interactions # 绘图、套索、移动/旋转、设置、导入、PD
 npm run qa:touch        # CDP 双指长按平移、捏合缩放、快速误触
 npm run qa:features     # 荧光笔直线、橡皮、复制粘贴、设置 JSON、语言
 npm run qa:shapes-math  # 选择识别、图形吸附、高级数学与竖式
+npm run qa:shapes-library # 图形库插入与坐标轴背景
 npm run qa:previews     # Markdown / Obsidian 内容预览图
 npm run qa:storage      # 设置中的存储占用读数和明细
 npm run qa:folders      # 文件夹、多选移动/删除、笔记菜单导出
@@ -422,7 +437,7 @@ node scripts/qa-pdf.mjs     # 中文 PDF 导出
 - 手写数学使用本地几何 + 字体骨架模板识别，不是神经网络 OCR。支持数字、常用变量、四则运算、幂、`Σ`、`π`、`√` 等符号；方程组、求导、求和等复杂结构仍可能需要手动修正。求解端支持线性方程组、符号求导、有限求和、对数/指数和单变量方程数值根，不代表完整的计算机代数系统。
 - Markdown 数学公式使用 KaTeX 的常用 LaTeX 子集；少数非 KaTeX 命令会显示错误标记。KaTeX 只用于阅读卡片，PDF/Markdown 导出保留原始 LaTeX 源码，不会把公式重新排版成数学字体。
 - 导入 Obsidian 文件夹时，选中的 vault 根文件夹也会保留为顶层文件夹；若要合并到现有结构，可在导入后移动笔记。
-- 基本图形纠正只处理直线、矩形、圆形/椭圆、三角形；不会自动纠正复杂图标或手写汉字。
+- 基本图形纠正覆盖直线、矩形、正方形、正圆、椭圆、三角形、正三角形、菱形、五角星、勾、叉；潦草的五角星、勾、叉可能需要重画或从图形库插入。不会自动纠正复杂图标或手写汉字。
 - 超大笔记（数千笔迹）在低端移动设备上仍可能需要降低缩放或关闭液态玻璃。DPR 预算会优先保证交互流畅。
 - 笔记列表内容预览图只内联 Vault 内的小图（data URL）；外链图片不会抓取，以保持本地优先和画布安全。
 - PNG/SVG 导出的是**画布内容**（背景、图片、笔迹）；Markdown 阅读卡片的正文排版请使用 PDF 或 Markdown 导出，避免把 HTML 文本硬塞进 SVG。

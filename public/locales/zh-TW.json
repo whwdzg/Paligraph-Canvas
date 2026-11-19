@@ -371,5 +371,20 @@
   "backup.reminder": "本筆記已有 {count} 筆。瀏覽器可能清理本機資料，建議定期匯出為可編輯檔案。",
   "math.advancedHint": "支援未知數、以分號分隔的方程組、d/dx 求導、sum(...,n=1..10) 求和、log10 與 exp。",
   "math.examples": "範例",
-  "math.recognizeSelection": "辨識所選數學公式"
+  "math.recognizeSelection": "辨識所選數學公式",
+  "shape.arrow": "箭頭",
+  "shape.square": "正方形",
+  "shape.circle": "正圓",
+  "shape.equilateralTriangle": "正三角形",
+  "shape.diamond": "菱形",
+  "shape.star": "五角星",
+  "shape.pentagon": "五邊形",
+  "shape.hexagon": "六邊形",
+  "shape.check": "勾",
+  "shape.cross": "叉",
+  "shapes.title": "插入圖形",
+  "shapes.eyebrow": "圖形庫",
+  "shapes.hint": "點擊圖形即可放到畫布中心，並自動選取，可移動、縮放和旋轉。",
+  "background.axes": "坐標軸",
+  "background.axesHint": "顯示帶數字的坐標軸、原點與 x/y 正方向。"
 }

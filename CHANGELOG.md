@@ -2,6 +2,28 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.9.0] — 2026-11-20
+
+### Shapes and shape library
+
+- Shape correction now recognises five-point stars, diamonds, perfect circles, squares, equilateral triangles, check marks and crosses, in addition to lines, rectangles, ellipses and triangles.
+- Added an **Insert shape** button to the floating toolbar with 14 common shapes: line, arrow, rectangle, square, ellipse, circle, triangle, equilateral triangle, diamond, star, pentagon, hexagon, check and cross.
+- Inserted shapes use the current ink colour/width/texture, are placed at the viewport centre and selected immediately for moving, rotating or deleting.
+- Crosses are rendered as two independent diagonals; check marks and arrows use open paths. All shapes export correctly to SVG and `.paligraph`.
+
+### Coordinate-axis background
+
+- Added a **math axes** paper pattern with numbered ticks, origin `O`, and labelled positive x/y direction arrows.
+- Axes are generated in screen space and remain crisp while panning/zooming; they are included in PNG/PDF/SVG exports and note thumbnails.
+- Added a coordinate-axis preview tile and explanatory hint to the background panel.
+- Shape/paper selection is preserved by `.paligraph` and settings import validation.
+
+### Internal
+
+- Added `createShapePoints`, open/closed shape handling, new recogniser tests, and `qa:shapes-library`.
+- 63 unit tests total.
+- Bumped package/app version to 1.9.0.
+
 ## [1.8.0] — 2026-11-20
 
 ### Selection-based math recognition

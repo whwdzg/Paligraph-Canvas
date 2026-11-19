@@ -11,6 +11,7 @@ import { downloadBlob, safeFilename } from './download';
 import { drawNoteImage, ensureImage, imageBounds } from './media';
 import { unionBounds } from './geometry';
 import { serializeEditableNote } from './editable';
+import { isOpenShape } from './shapes';
 import { strokeToPath } from './strokes';
 import type { Bounds, Note, Stroke } from './types';
 
@@ -441,10 +442,14 @@ function escapeXml(value: string): string {
 }
 
 function shapePathData(stroke: Stroke): string {
-  if (!stroke.points.length) return '';
+  if (!stroke.points.length || !stroke.shape) return '';
   const points = stroke.points;
-  const closed = stroke.shape === 'rectangle' || stroke.shape === 'triangle' || stroke.shape === 'ellipse';
-  return `${points.map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(' ')}${closed ? ' Z' : ''}`;
+  const coordinate = (point: Stroke['points'][number]): string => `${point.x.toFixed(2)} ${point.y.toFixed(2)}`;
+  if (stroke.shape === 'cross' && points.length >= 4) {
+    return `M${coordinate(points[0])} L${coordinate(points[1])} M${coordinate(points[2])} L${coordinate(points[3])}`;
+  }
+  const path = points.map((point, index) => `${index === 0 ? 'M' : 'L'}${coordinate(point)}`).join(' ');
+  return `${path}${isOpenShape(stroke.shape) ? '' : ' Z'}`;
 }
 
 export async function exportPngFile(note: Note): Promise<void> {
@@ -452,6 +457,58 @@ export async function exportPngFile(note: Note): Promise<void> {
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
   if (!blob) throw new Error('Could not encode PNG.');
   downloadBlob(safeFilename(note.title, 'png'), blob);
+}
+
+function axesSvg(
+  minX: number,
+  minY: number,
+  width: number,
+  height: number,
+  color: string,
+  opacity: number,
+  spacing: number,
+): string {
+  const step = Math.max(20, spacing);
+  const parts: string[] = [`<g opacity="${opacity.toFixed(2)}" fill="none" stroke="${escapeXml(color)}" stroke-width="1.2">`];
+  const showX = minY <= 0 && 0 <= minY + height;
+  const showY = minX <= 0 && 0 <= minX + width;
+  if (showX) parts.push(`<line x1="${minX}" y1="0" x2="${minX + width}" y2="0"/>`);
+  if (showY) parts.push(`<line x1="0" y1="${minY}" x2="0" y2="${minY + height}"/>`);
+
+  const labelParts: string[] = [];
+  if (showX) {
+    const first = Math.ceil(minX / step) * step;
+    for (let value = first; value <= minX + width; value += step) {
+      if (Math.abs(value) < 0.001) continue;
+      parts.push(`<line x1="${value}" y1="-4" x2="${value}" y2="4"/>`);
+      labelParts.push(`<text x="${value}" y="15" text-anchor="middle">${value}</text>`);
+    }
+  }
+  if (showY) {
+    const first = Math.ceil(minY / step) * step;
+    for (let value = first; value <= minY + height; value += step) {
+      if (Math.abs(value) < 0.001) continue;
+      parts.push(`<line x1="-4" y1="${value}" x2="4" y2="${value}"/>`);
+      labelParts.push(`<text x="-8" y="${value + 3}" text-anchor="end">${value}</text>`);
+    }
+  }
+  parts.push('</g>');
+  if (labelParts.length) {
+    parts.push(`<g fill="${escapeXml(color)}" font-family="Segoe UI, sans-serif" font-size="11" opacity="${opacity.toFixed(2)}">${labelParts.join('')}</g>`);
+  }
+  if (showX) {
+    const tip = minX + width;
+    parts.push(`<path d="M${tip - 8} -4 L${tip} 0 L${tip - 8} 4 Z" fill="${escapeXml(color)}" stroke="none"/>`);
+    parts.push(`<text x="${tip - 5}" y="-8" text-anchor="end" fill="${escapeXml(color)}" stroke="none" font-family="Segoe UI, sans-serif" font-size="11">x</text>`);
+  }
+  if (showY) {
+    parts.push(`<path d="M-4 ${minY + 8} L0 ${minY} L4 ${minY + 8} Z" fill="${escapeXml(color)}" stroke="none"/>`);
+    parts.push(`<text x="7" y="${minY + 12}" fill="${escapeXml(color)}" stroke="none" font-family="Segoe UI, sans-serif" font-size="11">y</text>`);
+  }
+  if (showX && showY) {
+    parts.push(`<g fill="${escapeXml(color)}" opacity="${opacity.toFixed(2)}"><circle cx="0" cy="0" r="2.2"/><text x="7" y="16" font-family="Segoe UI, sans-serif" font-size="11">O</text></g>`);
+  }
+  return parts.join('');
 }
 
 /** Vector export for the canvas content. Pixel erasers become an SVG mask. */
@@ -470,7 +527,7 @@ export function exportSvgFile(note: Note): void {
   const dash = bg.lineStyle === 'dashed' ? ' stroke-dasharray="4 6"' : '';
   const spacing = Math.max(8, bg.spacing);
   const pattern =
-    bg.pattern === 'blank'
+    bg.pattern === 'blank' || bg.pattern === 'axes'
       ? ''
       : `<pattern id="paperPattern" patternUnits="userSpaceOnUse" width="${spacing}" height="${spacing}">` +
         (bg.pattern === 'grid'
@@ -479,8 +536,12 @@ export function exportSvgFile(note: Note): void {
             ? `<path d="M 0 ${spacing} L ${spacing} ${spacing}" fill="none" stroke="${bgColor}" stroke-width="1"${dash}/>`
             : `<circle cx="${spacing / 2}" cy="${spacing / 2}" r="1.3" fill="${bgColor}"/>`) +
         `</pattern>`;
+  const axes = bg.pattern === 'axes'
+    ? axesSvg(minX, minY, width, height, bgColor, Math.max(0.28, bgOpacity + 0.26), spacing)
+    : '';
   const background = `<rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="#fbfcff"/>` +
-    (pattern ? `<rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="url(#paperPattern)" opacity="${bgOpacity}"/>` : '');
+    (pattern ? `<rect x="${minX}" y="${minY}" width="${width}" height="${height}" fill="url(#paperPattern)" opacity="${bgOpacity}"/>` : '') +
+    axes;
 
   const pixelErasers = note.strokes.filter((stroke) => stroke.tool === 'eraser');
   const visibleStrokes = note.strokes.filter((stroke) => stroke.tool !== 'eraser');

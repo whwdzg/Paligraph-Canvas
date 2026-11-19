@@ -371,5 +371,20 @@
   "backup.reminder": "このノートには {count} 本のインクがあります。ブラウザーがローカルデータを消去する場合があるため、定期的に編集可能ファイルを書き出してください。",
   "math.advancedHint": "未知数、セミコロン区切りの連立方程式、d/dx の微分、sum(...,n=1..10)、log10、exp に対応します。",
   "math.examples": "例",
-  "math.recognizeSelection": "選択した数式を認識"
+  "math.recognizeSelection": "選択した数式を認識",
+  "shape.arrow": "矢印",
+  "shape.square": "正方形",
+  "shape.circle": "正円",
+  "shape.equilateralTriangle": "正三角形",
+  "shape.diamond": "ひし形",
+  "shape.star": "五芒星",
+  "shape.pentagon": "五角形",
+  "shape.hexagon": "六角形",
+  "shape.check": "チェック",
+  "shape.cross": "バツ",
+  "shapes.title": "図形を挿入",
+  "shapes.eyebrow": "図形ライブラリ",
+  "shapes.hint": "図形をクリックするとキャンバス中央に配置され、選択状態になります。移動・拡大縮小・回転ができます。",
+  "background.axes": "座標軸",
+  "background.axesHint": "数字付きの座標軸、原点、x/y の正方向を表示します。"
 }

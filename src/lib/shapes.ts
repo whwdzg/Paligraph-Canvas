@@ -18,6 +18,84 @@ export interface ShapeFit {
   points: InkPoint[];
 }
 
+const OPEN_SHAPES = new Set<ShapeKind>(['line', 'arrow', 'check', 'cross']);
+
+export function isOpenShape(kind: ShapeKind): boolean {
+  return OPEN_SHAPES.has(kind);
+}
+
+function polarPoints(
+  cx: number,
+  cy: number,
+  radiusX: number,
+  radiusY: number,
+  count: number,
+  offset = -Math.PI / 2,
+): InkPoint[] {
+  const points: InkPoint[] = [];
+  for (let index = 0; index <= count; index += 1) {
+    const angle = offset + (index / count) * Math.PI * 2;
+    points.push({ x: cx + Math.cos(angle) * radiusX, y: cy + Math.sin(angle) * radiusY, p: 0.55 });
+  }
+  return points;
+}
+
+/** Builds exact points for the shape picker and auto-snap geometry. */
+export function createShapePoints(kind: ShapeKind, bounds: { minX: number; minY: number; maxX: number; maxY: number }): InkPoint[] {
+  const { minX, minY, maxX, maxY } = bounds;
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  const width = Math.max(1, maxX - minX);
+  const height = Math.max(1, maxY - minY);
+  const radius = Math.min(width, height) / 2;
+  const point = (x: number, y: number): InkPoint => ({ x, y, p: 0.55 });
+
+  switch (kind) {
+    case 'line':
+      return [point(minX, cy), point(maxX, cy)];
+    case 'arrow':
+      return [point(minX, cy), point(maxX, cy), point(maxX - width * 0.2, cy - height * 0.16), point(maxX, cy), point(maxX - width * 0.2, cy + height * 0.16)];
+    case 'rectangle':
+      return [point(minX, minY), point(maxX, minY), point(maxX, maxY), point(minX, maxY), point(minX, minY)];
+    case 'square':
+      return [point(cx - radius, cy - radius), point(cx + radius, cy - radius), point(cx + radius, cy + radius), point(cx - radius, cy + radius), point(cx - radius, cy - radius)];
+    case 'ellipse':
+      return polarPoints(cx, cy, width / 2, height / 2, 96);
+    case 'circle':
+      return polarPoints(cx, cy, radius, radius, 96);
+    case 'triangle':
+      return [point(minX, maxY), point(cx, minY), point(maxX, maxY), point(minX, maxY)];
+    case 'equilateralTriangle': {
+      const size = Math.min(width, height * 1.15);
+      const h = size * (Math.sqrt(3) / 2);
+      return [point(cx - size / 2, cy + h / 2), point(cx + size / 2, cy + h / 2), point(cx, cy - h / 2), point(cx - size / 2, cy + h / 2)];
+    }
+    case 'diamond':
+      return [point(cx, minY), point(maxX, cy), point(cx, maxY), point(minX, cy), point(cx, minY)];
+    case 'star': {
+      const points: InkPoint[] = [];
+      const inner = radius * 0.42;
+      for (let index = 0; index < 10; index += 1) {
+        const angle = -Math.PI / 2 + (index / 10) * Math.PI * 2;
+        const r = index % 2 === 0 ? radius : inner;
+        points.push(point(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r));
+      }
+      points.push(points[0]);
+      return points;
+    }
+    case 'pentagon':
+      return polarPoints(cx, cy, radius, radius, 5);
+    case 'hexagon':
+      return polarPoints(cx, cy, radius, radius, 6, 0);
+    case 'check':
+      return [point(minX, minY + height * 0.38), point(minX + width * 0.38, maxY), point(maxX, minY + height * 0.12)];
+    case 'cross':
+      return [point(minX, minY), point(maxX, maxY), point(maxX, minY), point(minX, maxY)];
+    default:
+      return [];
+  }
+}
+
 function polygonArea(points: readonly InkPoint[]): number {
   let area = 0;
   for (let i = 0; i < points.length; i += 1) {
@@ -116,6 +194,33 @@ export function recognizeShape(rawPoints: readonly InkPoint[]): ShapeFit | null 
   const hullArea = Math.abs(polygonArea(hull));
 
   if (!closed) {
+    const checkPoints = simplifyPoints(points, diagonal * 0.09);
+    if (checkPoints.length >= 3) {
+      const lowIndex = checkPoints.reduce((best, point, index) => (point.y > checkPoints[best].y ? index : best), 0);
+      const low = checkPoints[lowIndex];
+      const left = checkPoints[0];
+      const right = checkPoints[checkPoints.length - 1];
+      if (
+        lowIndex > 0 &&
+        lowIndex < checkPoints.length - 1 &&
+        Math.min(left.y, right.y) < low.y - height * 0.16 &&
+        Math.max(left.x, right.x) - Math.min(left.x, right.x) > width * 0.55
+      ) {
+        return {
+          kind: 'check',
+          confidence: 0.78,
+          points: [
+            { x: left.x, y: left.y, p: 0.55 },
+            { x: low.x, y: low.y, p: 0.55 },
+            { x: right.x, y: right.y, p: 0.55 },
+          ],
+        };
+      }
+    }
+    if (polylineSelfIntersects(checkPoints) && width > 18 && height > 18) {
+      return { kind: 'cross', confidence: 0.76, points: createShapePoints('cross', bounds) };
+    }
+
     const direct = distance(first.x, first.y, last.x, last.y);
     const length = pathLength(points);
     const straightness = direct / Math.max(1, length);
@@ -159,6 +264,40 @@ export function recognizeShape(rawPoints: readonly InkPoint[]): ShapeFit | null 
 
   const fillRatio = hullArea / bboxArea;
 
+  // Five-point star: the radius alternates between outer peaks and inner
+  // valleys five times while the path remains closed.
+  const radii = corners.map((point) => Math.hypot(point.x - center.x, point.y - center.y));
+  const maxRadius = Math.max(1, ...radii);
+  let peaks = 0;
+  let valleys = 0;
+  for (let index = 0; index < radii.length; index += 1) {
+    const previous = radii[(index - 1 + radii.length) % radii.length];
+    const next = radii[(index + 1) % radii.length];
+    if (radii[index] > maxRadius * 0.72 && radii[index] >= previous && radii[index] >= next) peaks += 1;
+    if (radii[index] < maxRadius * 0.58 && radii[index] <= previous && radii[index] <= next) valleys += 1;
+  }
+  if (peaks >= 4 && peaks <= 6 && valleys >= 4 && normalized.length >= 8) {
+    return {
+      kind: 'star',
+      confidence: clamp(0.62 + peaks * 0.045, 0, 0.94),
+      points: createShapePoints('star', bounds),
+    };
+  }
+
+  // A diamond has four equal-ish edges but a hollow, rotated-square silhouette.
+  // Test it before circles: four corner points can still have a low radial
+  // error, and a circle snap would destroy the intentional points.
+  if (corners.length === 4 && fillRatio > 0.34 && fillRatio < 0.64) {
+    const sides = corners.map((corner, index) =>
+      distance(corner.x, corner.y, corners[(index + 1) % corners.length].x, corners[(index + 1) % corners.length].y),
+    );
+    const shortest = Math.min(...sides);
+    const longest = Math.max(...sides);
+    if (shortest > 1 && longest / shortest < 1.35) {
+      return { kind: 'diamond', confidence: 0.76, points: createShapePoints('diamond', bounds) };
+    }
+  }
+
   // Circles and ellipses must be tested before rectangles: both can simplify
   // to a handful of corners, but the normalized radius of a circle stays very
   // close to one. This prevents a round sketch from being squared off.
@@ -166,10 +305,12 @@ export function recognizeShape(rawPoints: readonly InkPoint[]): ShapeFit | null 
   const roundPolygon = radialError < 0.17 && circularity > 0.72 && corners.length >= 5;
   if ((veryRound || roundPolygon) && cornerArea / Math.max(1, hullArea) > 0.48) {
     const roundness = clamp(1 - radialError * 2.4, 0, 1);
+    const circle = Math.abs(width - height) / Math.max(width, height) < 0.17;
+    const points = circle ? createShapePoints('circle', bounds) : ellipsePoints(bounds);
     return {
-      kind: 'ellipse',
+      kind: circle ? 'circle' : 'ellipse',
       confidence: clamp(0.56 + circularity * 0.2 + roundness * 0.2, 0, 0.98),
-      points: ellipsePoints(bounds),
+      points,
     };
   }
 
@@ -179,20 +320,29 @@ export function recognizeShape(rawPoints: readonly InkPoint[]): ShapeFit | null 
       const triangleArea = Math.abs(polygonArea(triangle));
       const areaMatch = triangleArea / Math.max(1, hullArea);
       if (areaMatch > 0.76) {
+        const sides = [
+          distance(triangle[0].x, triangle[0].y, triangle[1].x, triangle[1].y),
+          distance(triangle[1].x, triangle[1].y, triangle[2].x, triangle[2].y),
+          distance(triangle[2].x, triangle[2].y, triangle[0].x, triangle[0].y),
+        ];
+        const equilateral = Math.max(...sides) / Math.max(1, Math.min(...sides)) < 1.22;
         return {
-          kind: 'triangle',
+          kind: equilateral ? 'equilateralTriangle' : 'triangle',
           confidence: clamp(0.55 + areaMatch * 0.28 + Math.min(0.1, Math.abs(sharpTurn - 60) / 300), 0, 0.97),
-          points: [...triangle.map((point) => ({ ...point, p: 0.55 })), { ...triangle[0], p: 0.55 }],
+          points: equilateral
+            ? createShapePoints('equilateralTriangle', bounds)
+            : [...triangle.map((point) => ({ ...point, p: 0.55 })), { ...triangle[0], p: 0.55 }],
         };
       }
     }
   }
 
   if (corners.length >= 4 && corners.length <= 6 && sharpTurn > 62 && fillRatio > 0.66) {
+    const square = Math.abs(width - height) / Math.max(width, height) < 0.12;
     return {
-      kind: 'rectangle',
+      kind: square ? 'square' : 'rectangle',
       confidence: clamp(0.58 + fillRatio * 0.22 + Math.min(0.12, (sharpTurn - 60) / 300), 0, 0.98),
-      points: rectanglePoints(bounds),
+      points: square ? createShapePoints('square', bounds) : rectanglePoints(bounds),
     };
   }
 
@@ -206,6 +356,25 @@ export function recognizeShape(rawPoints: readonly InkPoint[]): ShapeFit | null 
   }
 
   return null;
+}
+
+function segmentIntersection(a: InkPoint, b: InkPoint, c: InkPoint, d: InkPoint): boolean {
+  const cross = (p: InkPoint, q: InkPoint, r: InkPoint): number =>
+    (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+  const d1 = cross(a, b, c);
+  const d2 = cross(a, b, d);
+  const d3 = cross(c, d, a);
+  const d4 = cross(c, d, b);
+  return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+}
+
+function polylineSelfIntersects(points: readonly InkPoint[]): boolean {
+  for (let i = 1; i < points.length; i += 1) {
+    for (let j = i + 2; j < points.length; j += 1) {
+      if (segmentIntersection(points[i - 1], points[i], points[j - 1], points[j])) return true;
+    }
+  }
+  return false;
 }
 
 function pickTriangleCorners(hull: readonly InkPoint[]): [InkPoint, InkPoint, InkPoint] | null {

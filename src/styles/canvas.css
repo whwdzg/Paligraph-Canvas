@@ -129,7 +129,8 @@
 }
 
 /* ------------------------------------------------------------- tool options */
-.tool-options-anchor {
+.tool-options-anchor,
+.shape-picker-anchor {
   position: absolute;
   left: 50%;
   bottom: calc(100% + 12px);
@@ -137,6 +138,77 @@
   max-width: calc(100vw - 24px);
   transform: translateX(-50%);
   animation: options-in 180ms var(--ease-swift);
+}
+
+.shape-picker-anchor {
+  width: 456px;
+}
+
+.shape-picker {
+  padding: 16px;
+}
+
+.shape-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-top: 12px;
+}
+
+.shape-picker-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 6px 2px 5px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 9px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.shape-picker-item svg {
+  width: 32px;
+  height: 32px;
+  padding: 2px;
+  border-radius: 6px;
+  color: var(--text);
+}
+
+.shape-picker-item:hover {
+  background: var(--hover);
+  border-color: var(--border);
+  color: var(--accent);
+}
+
+.shape-picker-item:hover svg {
+  color: var(--accent);
+}
+
+.shape-picker-hint {
+  margin: 10px 2px 0;
+  color: var(--text-3);
+  font-size: 9.5px;
+  line-height: 1.45;
+}
+
+.tool-shapes.is-soft {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+@media (max-width: 560px) {
+  .shape-picker-anchor {
+    width: calc(100vw - 20px);
+  }
+
+  .shape-picker-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
 }
 
 .tool-options,
@@ -556,6 +628,19 @@
 .pattern-ruled .pattern-swatch[data-line-style="dashed"] {
   background-image: linear-gradient(to bottom, transparent 6px, rgba(110, 128, 150, 0.38) 6px, rgba(110, 128, 150, 0.38) 7px, transparent 7px);
   background-size: 100% 9px;
+}
+
+.pattern-axes .pattern-swatch {
+  background-image:
+    linear-gradient(to right, transparent calc(50% - 0.5px), rgba(110, 128, 150, 0.55) calc(50% - 0.5px), rgba(110, 128, 150, 0.55) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+    linear-gradient(to bottom, transparent calc(50% - 0.5px), rgba(110, 128, 150, 0.55) calc(50% - 0.5px), rgba(110, 128, 150, 0.55) calc(50% + 0.5px), transparent calc(50% + 0.5px));
+}
+
+.background-hint {
+  margin: 7px 1px 0;
+  color: var(--text-3);
+  font-size: 9.5px;
+  line-height: 1.45;
 }
 
 .tint-row {

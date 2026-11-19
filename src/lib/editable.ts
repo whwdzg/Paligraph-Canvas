@@ -29,7 +29,10 @@ export interface EditableFile {
   };
 }
 
-const SHAPES = new Set<ShapeKind>(['line', 'rectangle', 'ellipse', 'triangle']);
+const SHAPES = new Set<ShapeKind>([
+  'line', 'arrow', 'rectangle', 'square', 'ellipse', 'circle', 'triangle',
+  'equilateralTriangle', 'diamond', 'star', 'pentagon', 'hexagon', 'check', 'cross',
+]);
 const TOOLS = new Set(['pen', 'highlighter', 'eraser']);
 const VARIANTS = new Set(['pen', 'pencil', 'crayon', 'brush', 'highlighter', 'pixel']);
 
@@ -94,7 +97,7 @@ function normalizeImage(value: unknown): NoteImage | null {
 
 function normalizeBackground(value: unknown): BackgroundSettings {
   const raw = record(value);
-  const patterns = new Set(['blank', 'grid', 'dots', 'ruled']);
+  const patterns = new Set(['blank', 'grid', 'dots', 'ruled', 'axes']);
   const lines = new Set(['solid', 'dashed']);
   return {
     pattern: typeof raw.pattern === 'string' && patterns.has(raw.pattern) ? raw.pattern as BackgroundSettings['pattern'] : 'grid',

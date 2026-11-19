@@ -34,6 +34,7 @@ import {
 import {
   cloneStrokes,
   createId,
+  createSeed,
   finishStroke,
   imagesInLasso,
   makeSelection,
@@ -41,7 +42,7 @@ import {
   strokeBounds,
   strokesInLasso,
 } from '../../lib/strokes';
-import { previewShapeStroke, recognizeShape, snapStrokeToShape, type ShapeFit } from '../../lib/shapes';
+import { createShapePoints, previewShapeStroke, recognizeShape, snapStrokeToShape, type ShapeFit } from '../../lib/shapes';
 import {
   drawNoteImage,
   ensureImage,
@@ -187,6 +188,7 @@ export interface DrawingSurfaceHandle {
   rotateSelection: (degrees: number) => void;
   clearCanvas: () => void;
   insertImages: (images: PreparedImage[]) => void;
+  insertShape: (kind: ShapeKind) => void;
   fitToContent: () => void;
   resetView: () => void;
   zoomIn: () => void;
@@ -796,6 +798,46 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     [applyDocument, markDirty, setSelection, snapshot],
   );
 
+  const insertShape = useCallback(
+    (kind: ShapeKind) => {
+      const size = sizeRef.current;
+      const view = viewRef.current;
+      const center = {
+        x: (size.width / 2 - view.x) / view.scale,
+        y: (size.height / 2 - view.y) / view.scale,
+      };
+      const base = clamp(Math.min(size.width, size.height) * 0.3 / view.scale, 110, 210);
+      const wide = kind === 'line' || kind === 'arrow' || kind === 'check' || kind === 'cross';
+      const width = wide ? base * 1.35 : base;
+      const height = wide ? base * 0.62 : base;
+      const bounds = {
+        minX: center.x - width / 2,
+        minY: center.y - height / 2,
+        maxX: center.x + width / 2,
+        maxY: center.y + height / 2,
+      };
+      const current = settingsRef.current;
+      const stroke: Stroke = {
+        id: createId('shape'),
+        tool: 'pen',
+        variant: current.penVariant,
+        color: current.penColor,
+        size: current.penSize,
+        opacity: PASTEL_TOOLS[current.penVariant].opacity,
+        points: createShapePoints(kind, bounds),
+        seed: createSeed(),
+        createdAt: Date.now(),
+        shape: kind,
+      };
+      const before = snapshot();
+      applyDocument([...before.strokes, stroke], before.images, before);
+      const selection = makeSelection([...before.strokes, stroke], [stroke.id], before.images, []);
+      setSelection(selection);
+      callbacksRef.current.onToolChange('lasso');
+    },
+    [applyDocument, setSelection, snapshot],
+  );
+
   useImperativeHandle(
     ref,
     () => ({
@@ -809,6 +851,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       rotateSelection,
       clearCanvas,
       insertImages,
+      insertShape,
       fitToContent,
       resetView,
       zoomIn,
@@ -824,6 +867,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       rotateSelection,
       clearCanvas,
       insertImages,
+      insertShape,
       fitToContent,
       resetView,
       setSelection,
