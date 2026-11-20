@@ -386,5 +386,5 @@
   "shapes.eyebrow": "Shape library",
   "shapes.hint": "Click a shape to place it at the centre of the canvas. It is selected so you can move, resize and rotate it.",
   "background.axes": "Axes",
-  "background.axesHint": "Shows numbered axes, the origin and the positive x/y directions."
+  "background.axesHint": "Shows numbered axes, the origin, x/y directions and a straight criss-cross grid; at 600% the grid keeps 1-unit intervals."
 }

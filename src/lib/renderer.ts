@@ -106,13 +106,20 @@ function paperColor(theme: ResolvedTheme): string {
   return theme === 'light' ? PAPER_LIGHT : PAPER_DARK;
 }
 
-function niceAxisStep(scale: number): number {
-  const raw = 64 / Math.max(0.1, scale);
+function niceAxisStep(scale: number, targetPixels = 64): number {
+  const raw = targetPixels / Math.max(0.1, scale);
   const exponent = Math.floor(Math.log10(raw));
   const magnitude = 10 ** exponent;
   const normalized = raw / magnitude;
   const factor = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
   return factor * magnitude;
+}
+
+function minorAxisStep(scale: number): number {
+  // At 600% one world unit is 6 screen pixels. Keep a real 1-unit grid there
+  // instead of jumping to 10/20-unit graph paper.
+  if (scale >= 5.5) return 1;
+  return Math.max(1, niceAxisStep(scale, 12));
 }
 
 function formatAxisNumber(value: number): string {
@@ -138,16 +145,62 @@ function drawAxes(
 
   const color = background.color || (theme === 'light' ? '#53657d' : '#cad7e7');
   const alpha = clamp(background.opacity + 0.26, 0.28, 0.86);
-  const step = niceAxisStep(view.scale);
+  const minor = minorAxisStep(view.scale);
+  const major = minor * 5;
   ctx.save();
-  ctx.globalAlpha = alpha;
   ctx.strokeStyle = color;
   ctx.fillStyle = color;
-  ctx.lineWidth = 1.35;
   ctx.setLineDash([]);
   ctx.font = '10px "Segoe UI Variable", "Segoe UI", sans-serif';
   ctx.textBaseline = 'middle';
 
+  const leftWorld = (0 - view.x) / view.scale;
+  const rightWorld = (width - view.x) / view.scale;
+  const topWorld = (0 - view.y) / view.scale;
+  const bottomWorld = (height - view.y) / view.scale;
+  const firstMinorX = Math.ceil(leftWorld / minor) * minor;
+  const firstMinorY = Math.ceil(topWorld / minor) * minor;
+  const firstMajorX = Math.ceil(leftWorld / major) * major;
+  const firstMajorY = Math.ceil(topWorld / major) * major;
+
+  // A real straight-line grid under the axes. At 600% this is a 1-unit grid,
+  // with every fifth line promoted to a major line.
+  ctx.globalAlpha = clamp(alpha * 0.34, 0.08, 0.38);
+  ctx.lineWidth = 0.65;
+  ctx.beginPath();
+  for (let value = firstMinorX; value <= rightWorld + minor * 0.01; value += minor) {
+    if (Math.abs(value) < minor * 0.001) continue;
+    const x = view.x + value * view.scale;
+    ctx.moveTo(Math.round(x) + 0.5, 0);
+    ctx.lineTo(Math.round(x) + 0.5, height);
+  }
+  for (let value = firstMinorY; value <= bottomWorld + minor * 0.01; value += minor) {
+    if (Math.abs(value) < minor * 0.001) continue;
+    const y = view.y + value * view.scale;
+    ctx.moveTo(0, Math.round(y) + 0.5);
+    ctx.lineTo(width, Math.round(y) + 0.5);
+  }
+  ctx.stroke();
+
+  ctx.globalAlpha = clamp(alpha * 0.58, 0.14, 0.6);
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let value = firstMajorX; value <= rightWorld + major * 0.01; value += major) {
+    if (Math.abs(value) < major * 0.001) continue;
+    const x = view.x + value * view.scale;
+    ctx.moveTo(Math.round(x) + 0.5, 0);
+    ctx.lineTo(Math.round(x) + 0.5, height);
+  }
+  for (let value = firstMajorY; value <= bottomWorld + major * 0.01; value += major) {
+    if (Math.abs(value) < major * 0.001) continue;
+    const y = view.y + value * view.scale;
+    ctx.moveTo(0, Math.round(y) + 0.5);
+    ctx.lineTo(width, Math.round(y) + 0.5);
+  }
+  ctx.stroke();
+
+  ctx.globalAlpha = alpha;
+  ctx.lineWidth = 1.35;
   if (onScreenY) {
     ctx.beginPath();
     ctx.moveTo(0, Math.round(originY) + 0.5);
@@ -161,42 +214,52 @@ function drawAxes(
     ctx.stroke();
   }
 
-  const leftWorld = (0 - view.x) / view.scale;
-  const rightWorld = (width - view.x) / view.scale;
-  const topWorld = (0 - view.y) / view.scale;
-  const bottomWorld = (height - view.y) / view.scale;
-  const firstX = Math.ceil(leftWorld / step) * step;
-  const firstY = Math.ceil(topWorld / step) * step;
-
+  // Unit ticks along each axis; numbers only at major intervals so they never
+  // collide when the 1-unit grid is visible.
+  ctx.lineWidth = 1;
+  ctx.globalAlpha = clamp(alpha * 0.9, 0.2, 0.82);
   if (onScreenY) {
-    for (let value = firstX; value <= rightWorld + step * 0.01; value += step) {
-      if (Math.abs(value) < step * 0.001) continue;
+    for (let value = firstMinorX; value <= rightWorld + minor * 0.01; value += minor) {
+      if (Math.abs(value) < minor * 0.001) continue;
       const x = view.x + value * view.scale;
+      const isMajor = Math.abs(value / major - Math.round(value / major)) < 1e-6;
       ctx.beginPath();
-      ctx.moveTo(x, originY - 4);
-      ctx.lineTo(x, originY + 4);
+      ctx.moveTo(x, originY - (isMajor ? 5 : 2.5));
+      ctx.lineTo(x, originY + (isMajor ? 5 : 2.5));
       ctx.stroke();
-      if (originY + 16 < height) {
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'top';
-        ctx.fillText(formatAxisNumber(value), x, originY + 9);
-        ctx.textBaseline = 'middle';
-      }
+    }
+  }
+  if (onScreenX) {
+    for (let value = firstMinorY; value <= bottomWorld + minor * 0.01; value += minor) {
+      if (Math.abs(value) < minor * 0.001) continue;
+      const y = view.y + value * view.scale;
+      const isMajor = Math.abs(value / major - Math.round(value / major)) < 1e-6;
+      ctx.beginPath();
+      ctx.moveTo(originX - (isMajor ? 5 : 2.5), y);
+      ctx.lineTo(originX + (isMajor ? 5 : 2.5), y);
+      ctx.stroke();
     }
   }
 
+  ctx.globalAlpha = alpha;
+  if (onScreenY) {
+    for (let value = firstMajorX; value <= rightWorld + major * 0.01; value += major) {
+      if (Math.abs(value) < major * 0.001) continue;
+      if (originY + 16 >= height) continue;
+      const x = view.x + value * view.scale;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(formatAxisNumber(value), x, originY + 9);
+      ctx.textBaseline = 'middle';
+    }
+  }
   if (onScreenX) {
-    for (let value = firstY; value <= bottomWorld + step * 0.01; value += step) {
-      if (Math.abs(value) < step * 0.001) continue;
+    for (let value = firstMajorY; value <= bottomWorld + major * 0.01; value += major) {
+      if (Math.abs(value) < major * 0.001) continue;
+      if (originX - 8 <= 8) continue;
       const y = view.y + value * view.scale;
-      ctx.beginPath();
-      ctx.moveTo(originX - 4, y);
-      ctx.lineTo(originX + 4, y);
-      ctx.stroke();
-      if (originX - 8 > 8) {
-        ctx.textAlign = 'right';
-        ctx.fillText(formatAxisNumber(value), originX - 7, y);
-      }
+      ctx.textAlign = 'right';
+      ctx.fillText(formatAxisNumber(value), originX - 7, y);
     }
   }
 
@@ -332,7 +395,7 @@ export function drawBackground(
   ctx.restore();
 }
 
-function ribbonPath(
+function traceRibbon(
   ctx: CanvasRenderingContext2D,
   points: readonly InkPoint[],
   baseWidth: number,
@@ -400,6 +463,17 @@ function ribbonPath(
   // left edge; this is the mirror of the end cap above.
   ctx.arc(startPoint.x, startPoint.y, widths[0] / 2, startAngle + Math.PI, startAngle, true);
   ctx.closePath();
+}
+
+function ribbonPath(
+  ctx: CanvasRenderingContext2D,
+  points: readonly InkPoint[],
+  baseWidth: number,
+  seed: number,
+  rough = 0,
+  taper = 0,
+): void {
+  traceRibbon(ctx, points, baseWidth, seed, rough, taper);
   ctx.fill();
 }
 
@@ -428,6 +502,7 @@ function jitterPath(
   seed: number,
   amount: number,
   width: number,
+  options: { base?: number; dash?: readonly [number, number] } = {},
 ): void {
   // Grain lives inside the tip caps. Including the exact endpoints would make
   // several translucent hairs converge on one pixel and leave a dark speck.
@@ -443,7 +518,7 @@ function jitterPath(
     const ny = (next.x - prev.x) / length;
     const edge = Math.min(i, points.length - 1 - i);
     const edgeFactor = Math.min(1, edge / 2);
-    const offset = seeded(seed, i, 2) * amount * edgeFactor;
+    const offset = (options.base ?? 0) + seeded(seed, i, 2) * amount * edgeFactor;
     const x = points[i].x + nx * offset;
     const y = points[i].y + ny * offset;
     if (i === start) ctx.moveTo(x, y);
@@ -452,7 +527,154 @@ function jitterPath(
   ctx.lineWidth = width;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
+  ctx.setLineDash(options.dash ? [...options.dash] : []);
   ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+/**
+ * Same-hue ink shade used for grooves and graphite flecks. Canvas alpha alone
+ * cannot make texture visible on an already opaque body, because compositing
+ * the same colour over itself is a no-op.
+ */
+function shadeColor(color: string, factor: number): string {
+  const match = color.trim().match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (!match) return color;
+  let hex = match[1];
+  if (hex.length === 3) hex = hex.split('').map((part) => part + part).join('');
+  const value = Number.parseInt(hex, 16);
+  const target = factor < 1 ? 0 : 255;
+  const amount = factor < 1 ? 1 - factor : factor - 1;
+  const channel = (shift: number): number => {
+    const base = (value >> shift) & 0xff;
+    return Math.round(clamp(base + (target - base) * amount, 0, 255));
+  };
+  return `rgb(${channel(16)}, ${channel(8)}, ${channel(0)})`;
+}
+
+function strokeLength(points: readonly InkPoint[]): number {
+  let total = 0;
+  for (let index = 1; index < points.length; index += 1) {
+    total += Math.hypot(points[index].x - points[index - 1].x, points[index].y - points[index - 1].y);
+  }
+  return total;
+}
+
+interface StrokeSample {
+  x: number;
+  y: number;
+  tx: number;
+  ty: number;
+  nx: number;
+  ny: number;
+}
+
+function sampleStrokeAt(
+  points: readonly InkPoint[],
+  cumulative: readonly number[],
+  distance: number,
+): StrokeSample {
+  let segment = 1;
+  while (segment < cumulative.length - 1 && cumulative[segment] < distance) segment += 1;
+  const start = points[Math.max(0, segment - 1)];
+  const end = points[Math.min(points.length - 1, segment)];
+  const span = Math.max(0.001, cumulative[segment] - cumulative[segment - 1]);
+  const t = clamp((distance - cumulative[segment - 1]) / span, 0, 1);
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const length = Math.hypot(dx, dy) || 1;
+  return {
+    x: start.x + dx * t,
+    y: start.y + dy * t,
+    tx: dx / length,
+    ty: dy / length,
+    nx: -dy / length,
+    ny: dx / length,
+  };
+}
+
+/** Short, direction-following graphite/wax flecks. */
+function textureDashes(
+  ctx: CanvasRenderingContext2D,
+  points: readonly InkPoint[],
+  seed: number,
+  count: number,
+  dashLength: number,
+  dashWidth: number,
+  spread: number,
+): void {
+  const cumulative: number[] = [0];
+  for (let index = 1; index < points.length; index += 1) {
+    cumulative.push(
+      cumulative[index - 1] + Math.hypot(
+        points[index].x - points[index - 1].x,
+        points[index].y - points[index - 1].y,
+      ),
+    );
+  }
+  const total = cumulative[cumulative.length - 1];
+  if (total < 1) return;
+  ctx.beginPath();
+  for (let index = 0; index < count; index += 1) {
+    const along = total * (0.08 + ((index + 0.35 + seeded(seed, index, 8) * 0.3) / count) * 0.84);
+    const sample = sampleStrokeAt(points, cumulative, along);
+    const offset = (seeded(seed, index, 9) - 0.5) * 2 * spread;
+    const x = sample.x + sample.nx * offset;
+    const y = sample.y + sample.ny * offset;
+    const length = dashLength * (0.55 + seeded(seed, index, 10) * 0.9);
+    const tilt = (seeded(seed, index, 11) - 0.5) * 0.32;
+    const cos = Math.cos(tilt);
+    const sin = Math.sin(tilt);
+    const dx = (sample.tx * cos - sample.ty * sin) * length * 0.5;
+    const dy = (sample.tx * sin + sample.ty * cos) * length * 0.5;
+    ctx.moveTo(x - dx, y - dy);
+    ctx.lineTo(x + dx, y + dy);
+  }
+  ctx.lineWidth = dashWidth;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+}
+
+/** Deterministic graphite/wax dust inside the body. */
+function textureSpeckles(
+  points: readonly InkPoint[],
+  ctx: CanvasRenderingContext2D,
+  seed: number,
+  spread: number,
+  radius: number,
+  count: number,
+): void {
+  const cumulative: number[] = [0];
+  for (let index = 1; index < points.length; index += 1) {
+    cumulative.push(
+      cumulative[index - 1] + Math.hypot(
+        points[index].x - points[index - 1].x,
+        points[index].y - points[index - 1].y,
+      ),
+    );
+  }
+  const total = cumulative[cumulative.length - 1];
+  if (total < 1) return;
+  ctx.beginPath();
+  let segment = 1;
+  for (let index = 0; index < count; index += 1) {
+    const distance = total * (0.08 + (index / Math.max(1, count - 1)) * 0.84);
+    while (segment < cumulative.length - 1 && cumulative[segment] < distance) segment += 1;
+    const start = points[Math.max(0, segment - 1)];
+    const end = points[Math.min(points.length - 1, segment)];
+    const span = Math.max(0.001, cumulative[segment] - cumulative[segment - 1]);
+    const t = clamp((distance - cumulative[segment - 1]) / span, 0, 1);
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const length = Math.hypot(dx, dy) || 1;
+    const offset = seeded(seed, index, 6) * spread;
+    const x = start.x + dx * t - (dy / length) * offset;
+    const y = start.y + dy * t + (dx / length) * offset;
+    const r = Math.max(0.22, radius * (0.7 + seeded(seed, index, 7) * 0.7));
+    ctx.moveTo(x + r, y);
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+  }
+  ctx.fill();
 }
 
 /** Paints one stroke. Pixel erasers are rendered with destination-out. */
@@ -548,57 +770,156 @@ export function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke): void 
   }
 
   if (stroke.variant === 'pencil') {
-    // Graphite: a soft body with deterministic, offset grain lines. The
-    // slightly larger pass count reads as tooth even at thin 4 px sizes.
-    ctx.globalAlpha = clamp(stroke.opacity * 0.68, 0.12, 0.8);
-    ribbonPath(ctx, points, stroke.size, stroke.seed, stroke.size * 0.07);
-    ctx.globalAlpha = clamp(stroke.opacity * 0.2, 0.05, 0.45);
-    for (let pass = 0; pass < 5; pass += 1) {
-      jitterPath(
-        ctx,
-        points,
-        stroke.seed + pass * 97,
-        stroke.size * (0.1 + pass * 0.065),
-        Math.max(0.5, stroke.size * (0.075 + pass * 0.018)),
-      );
-    }
-  } else if (stroke.variant === 'crayon') {
-    ctx.globalAlpha = clamp(stroke.opacity * 0.52, 0.12, 0.72);
-    ribbonPath(ctx, points, stroke.size, stroke.seed, stroke.size * 0.22);
-    ctx.globalAlpha = clamp(stroke.opacity * 0.2, 0.06, 0.5);
-    for (let pass = 0; pass < 7; pass += 1) {
-      jitterPath(
-        ctx,
-        points,
-        stroke.seed + pass * 53,
-        stroke.size * (0.17 + pass * 0.055),
-        Math.max(0.65, stroke.size * (0.1 + pass * 0.012)),
-      );
-    }
-  } else {
-    // Pen and ink brush use a pressure-sensitive filled ribbon with a soft tip.
-    ctx.globalAlpha = clamp(stroke.opacity, 0.15, 1);
-    ribbonPath(
+    // Graphite: a light tooth body, short dark flecks, then dust. Dashes stay
+    // short so the result reads as paper tooth rather than a wire mesh.
+    ctx.globalAlpha = clamp(stroke.opacity * 0.54, 0.12, 0.72);
+    ribbonPath(ctx, points, stroke.size, stroke.seed, stroke.size * 0.09);
+    ctx.globalAlpha = clamp(stroke.opacity * 0.22, 0.08, 0.38);
+    ribbonPath(ctx, points, stroke.size * 0.66, stroke.seed + 17, stroke.size * 0.06);
+    ctx.save();
+    traceRibbon(ctx, points, stroke.size, stroke.seed, stroke.size * 0.09);
+    ctx.clip();
+    ctx.strokeStyle = shadeColor(stroke.color, 0.46);
+    ctx.globalAlpha = clamp(stroke.opacity * 0.42, 0.14, 0.58);
+    textureDashes(
       ctx,
       points,
-      stroke.size * (stroke.variant === 'brush' ? 1.22 : 1),
-      stroke.seed,
-      0,
-      stroke.variant === 'brush' ? 0.5 : 0.24,
+      stroke.seed + 619,
+      Math.round(clamp(strokeLength(points) / 5, 32, 100)),
+      Math.max(0.35, stroke.size * 0.18),
+      Math.max(0.3, stroke.size * 0.04),
+      stroke.size * 0.22,
     );
-    if (stroke.variant === 'brush') {
-      // Offset hairs break up the otherwise uniform brush body.
-      ctx.globalAlpha = clamp(stroke.opacity * 0.2, 0.04, 0.34);
-      for (let pass = 0; pass < 3; pass += 1) {
-        jitterPath(
-          ctx,
-          points,
-          stroke.seed + pass * 131,
-          stroke.size * (0.14 + pass * 0.075),
-          Math.max(0.4, stroke.size * (0.07 + pass * 0.014)),
-        );
-      }
+    ctx.strokeStyle = shadeColor(stroke.color, 0.56);
+    ctx.globalAlpha = clamp(stroke.opacity * 0.18, 0.06, 0.32);
+    for (let pass = 0; pass < 3; pass += 1) {
+      jitterPath(
+        ctx,
+        points,
+        stroke.seed + 919 + pass * 37,
+        stroke.size * 0.16,
+        Math.max(0.4, stroke.size * 0.035),
+        {
+          dash: [
+            Math.max(0.35, stroke.size * (0.18 + pass * 0.04)),
+            Math.max(0.4, stroke.size * 0.16),
+          ],
+        },
+      );
     }
+    ctx.strokeStyle = shadeColor(stroke.color, 0.7);
+    ctx.globalAlpha = clamp(stroke.opacity * 0.1, 0.03, 0.2);
+    ctx.lineWidth = Math.max(0.45, stroke.size * 0.05);
+    traceSmoothPath(ctx, points);
+    ctx.stroke();
+    ctx.fillStyle = shadeColor(stroke.color, 0.4);
+    ctx.globalAlpha = clamp(stroke.opacity * 0.55, 0.16, 0.7);
+    textureSpeckles(
+      points,
+      ctx,
+      stroke.seed + 311,
+      stroke.size * 0.24,
+      Math.max(0.24, stroke.size * 0.036),
+      Math.round(clamp(strokeLength(points) / 4, 42, 120)),
+    );
+    ctx.restore();
+  } else if (stroke.variant === 'crayon') {
+    // Crayon: broad wax body, uneven bands, broken streaks and coarse dust.
+    ctx.globalAlpha = clamp(stroke.opacity * 0.46, 0.12, 0.68);
+    ribbonPath(ctx, points, stroke.size * 1.06, stroke.seed, stroke.size * 0.27);
+    ctx.save();
+    traceRibbon(ctx, points, stroke.size * 1.06, stroke.seed, stroke.size * 0.27);
+    ctx.clip();
+    ctx.strokeStyle = shadeColor(stroke.color, 0.7);
+    ctx.globalAlpha = clamp(stroke.opacity * 0.24, 0.08, 0.44);
+    for (let pass = 0; pass < 4; pass += 1) {
+      jitterPath(
+        ctx,
+        points,
+        stroke.seed + pass * 61,
+        stroke.size * 0.15,
+        Math.max(0.7, stroke.size * 0.22),
+        {
+          base: (-0.32 + pass * 0.21) * stroke.size,
+          dash: [Math.max(1.2, stroke.size * (1.2 + pass * 0.3)), Math.max(0.6, stroke.size * 0.18)],
+        },
+      );
+    }
+    ctx.strokeStyle = shadeColor(stroke.color, 0.58);
+    ctx.globalAlpha = clamp(stroke.opacity * 0.26, 0.1, 0.46);
+    textureDashes(
+      ctx,
+      points,
+      stroke.seed + 733,
+      Math.round(clamp(strokeLength(points) / 6, 26, 70)),
+      Math.max(0.8, stroke.size * 0.62),
+      Math.max(0.5, stroke.size * 0.07),
+      stroke.size * 0.29,
+    );
+    ctx.fillStyle = shadeColor(stroke.color, 0.52);
+    ctx.globalAlpha = clamp(stroke.opacity * 0.36, 0.1, 0.52);
+    textureSpeckles(
+      points,
+      ctx,
+      stroke.seed + 401,
+      stroke.size * 0.27,
+      Math.max(0.32, stroke.size * 0.055),
+      Math.round(clamp(strokeLength(points) / 8, 24, 60)),
+    );
+    ctx.restore();
+  } else if (stroke.variant === 'brush') {
+    // Brush: tapered ink body with separated bristle hairs and a darker spine.
+    ctx.globalAlpha = clamp(stroke.opacity * 0.12, 0.03, 0.18);
+    ribbonPath(ctx, points, stroke.size * 1.28, stroke.seed, stroke.size * 0.11, 0.5);
+    ctx.globalAlpha = clamp(stroke.opacity, 0.15, 1);
+    ribbonPath(ctx, points, stroke.size * 1.16, stroke.seed, stroke.size * 0.05, 0.55);
+    ctx.save();
+    traceRibbon(ctx, points, stroke.size * 1.16, stroke.seed, stroke.size * 0.05, 0.55);
+    ctx.clip();
+    ctx.strokeStyle = shadeColor(stroke.color, 0.56);
+    ctx.globalAlpha = clamp(stroke.opacity * 0.4, 0.12, 0.55);
+    for (let pass = 0; pass < 9; pass += 1) {
+      jitterPath(
+        ctx,
+        points,
+        stroke.seed + 131 + pass * 73,
+        stroke.size * 0.035,
+        Math.max(0.7, stroke.size * (0.04 + (pass % 3) * 0.016)),
+        {
+          // Continuous bristle grooves; dashed hairs looked like ladder rungs.
+          base: (-0.44 + pass * 0.11) * stroke.size,
+        },
+      );
+    }
+    ctx.strokeStyle = shadeColor(stroke.color, 1.28);
+    ctx.globalAlpha = clamp(stroke.opacity * 0.13, 0.04, 0.2);
+    for (let pass = 0; pass < 3; pass += 1) {
+      jitterPath(
+        ctx,
+        points,
+        stroke.seed + 811 + pass * 47,
+        stroke.size * 0.03,
+        Math.max(0.55, stroke.size * 0.05),
+        { base: (-0.22 + pass * 0.22) * stroke.size },
+      );
+    }
+    ctx.strokeStyle = shadeColor(stroke.color, 0.66);
+    ctx.globalAlpha = clamp(stroke.opacity * 0.2, 0.06, 0.32);
+    ctx.lineWidth = Math.max(0.5, stroke.size * 0.26);
+    traceSmoothPath(ctx, points);
+    ctx.stroke();
+    ctx.restore();
+  } else {
+    // Pen: a soft ink bleed, dense body and a slightly darker moist core.
+    ctx.globalAlpha = clamp(stroke.opacity * 0.12, 0.03, 0.2);
+    ribbonPath(ctx, points, stroke.size * 1.12, stroke.seed, stroke.size * 0.035, 0.24);
+    ctx.globalAlpha = clamp(stroke.opacity, 0.15, 1);
+    ribbonPath(ctx, points, stroke.size, stroke.seed, stroke.size * 0.018, 0.24);
+    ctx.strokeStyle = shadeColor(stroke.color, 0.82);
+    ctx.globalAlpha = clamp(stroke.opacity * 0.16, 0.04, 0.24);
+    ctx.lineWidth = Math.max(0.55, stroke.size * 0.28);
+    traceSmoothPath(ctx, points);
+    ctx.stroke();
   }
   ctx.restore();
 }

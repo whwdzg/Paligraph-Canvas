@@ -2,6 +2,31 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.10.0] — 2026-11-20
+
+### Richer ink textures
+
+- Pen now has a soft edge bleed, dense body and darker moist core.
+- Pencil uses clipped graphite dust, short directional flecks and a tooth body instead of long crossing lines.
+- Crayon uses broad wax bands, chipped waxy dashes and coarse pigment dust.
+- Brush adds continuous bristle grooves, light dry-brush highlights and a darker spine.
+- Texture colour is shaded from the ink colour so grooves remain visible on opaque strokes; all texture is clipped inside the ribbon and never floats outside the caps.
+
+### Shape library polish
+
+- The insert-shape popover now has 20 px rounded corners, a stronger frosted-glass blur and a solid fallback when liquid glass is disabled.
+
+### Coordinate grid
+
+- The axes background now draws a full straight-line criss-cross grid.
+- At 600% zoom the minor grid stays at 1 world unit; every fifth line is a major grid line with a numbered label, plus unit ticks on the axes.
+- Labels remain readable while the 1-unit grid is visible.
+
+### Internal
+
+- Added `traceRibbon` path reuse for clipped texture passes; 63 tests remain green.
+- Bumped package/app version to 1.10.0.
+
 ## [1.9.1] — 2026-11-20
 
 ### Fixed

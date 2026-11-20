@@ -386,5 +386,5 @@
   "shapes.eyebrow": "圖形庫",
   "shapes.hint": "點擊圖形即可放到畫布中心，並自動選取，可移動、縮放和旋轉。",
   "background.axes": "坐標軸",
-  "background.axesHint": "顯示帶數字的坐標軸、原點與 x/y 正方向。"
+  "background.axesHint": "顯示數字刻度、原點、x/y 正方向與直線交叉網格；放大到 600% 時仍保留 1 個世界單位為間隔。"
 }
