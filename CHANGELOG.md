@@ -2,6 +2,16 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.14.0] — 2026-11-21
+
+### Immersive PWA titlebar
+
+- Added `window-controls-overlay` to the manifest `display_override`; installed Chromium PWAs now extend the app header into the native titlebar.
+- Added a `useWindowControlsOverlay` hook that tracks titlebar geometry and reserves space for the native window buttons.
+- The header is a draggable window region; buttons, the title input and export menu are explicitly non-draggable, and double-clicking the drag region maximises the window.
+- Sidebar, editor and canvas are offset below the immersive titlebar; the skeleton loading state respects it too.
+- Added `qa:wco`, covering the manifest mode, fixed header, drag/no-drag regions, system-button clearance and normal-browser fallback.
+
 ## [1.13.1] — 2026-11-21
 
 ### Fixed

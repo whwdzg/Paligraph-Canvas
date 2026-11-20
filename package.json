@@ -1,7 +1,7 @@
 {
   "name": "paligraph-canvas",
   "private": true,
-  "version": "1.13.1",
+  "version": "1.14.0",
   "type": "module",
   "description": "Paligraph Canvas — a Fluent Design web notebook for thinking in ink and markdown.",
   "homepage": "https://whwdzg.github.io/Paligraph-Canvas/",
@@ -31,6 +31,7 @@
     "qa:latex": "node scripts/qa-latex.mjs",
     "qa:pwa": "node scripts/qa-pwa.mjs",
     "qa:pwa-files": "node scripts/qa-pwa-files.mjs",
+    "qa:wco": "node scripts/qa-wco.mjs",
     "qa:backup": "node scripts/qa-backup.mjs",
     "qa:images": "node scripts/qa-images.mjs",
     "qa:image-resize": "node scripts/qa-image-resize.mjs",

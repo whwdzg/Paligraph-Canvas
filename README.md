@@ -3,7 +3,7 @@
 **灵感，落于笔尖。** A local-first notebook for ink, Markdown and the ideas in between.
 
 [![Deploy to GitHub Pages](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml/badge.svg)](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml)
-![Version](https://img.shields.io/badge/version-1.13.1-2b7fff)
+![Version](https://img.shields.io/badge/version-1.14.0-2b7fff)
 ![License](https://img.shields.io/badge/license-GPL--3.0--or--later-4c1)
 
 Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布、一套接近 Apple Notes 的悬浮工具栏、Fluent Design Sun Valley 的材质，以及可选的液态玻璃（liquid glass）质感。它把笔迹数据和 Markdown 都留在这台设备上，并可以在需要时导出为 PDF 或 Markdown。
@@ -168,6 +168,11 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 - 如果浏览器不支持自动安装，设置页会显示对应浏览器的手动安装步骤。
 - **本地文件关联**：安装后的 Chromium PWA（Windows Edge/Chrome）注册 `.paligraph` 文件处理器，可从资源管理器右键 → **打开方式 → Paligraph**，或将其设为默认应用；也支持一次选择多个 `.paligraph` 文件。
 - 文件关联通过 Web App Manifest 的 `file_handlers` 和 `launchQueue` 实现；已安装旧版本时需更新或重新安装一次 PWA，让 Windows 重新注册文件类型。Firefox/Safari 不支持该系统级文件关联。
+- **沉浸式标题栏**：安装后的 Chromium PWA 使用 Window Controls Overlay，应用页眉占据原生标题栏区域，原生最小化/最大化/关闭按钮叠加在右侧。
+- 页眉空白区域可拖动窗口，双击可最大化；按钮、标题输入框和导出菜单均标记为不可拖动，避免误操作。
+- 普通浏览器或不支持 WCO 的环境自动回退到普通独立窗口；已安装旧版 PWA 建议更新或重装一次以启用新的 `display_override`。
+
+![沉浸式 PWA 标题栏](docs/wco.png)
 
 ### 多语言与数据
 
@@ -436,6 +441,7 @@ npm run qa:folders      # 文件夹、多选移动/删除、笔记菜单导出
 npm run qa:latex        # Markdown/Obsidian LaTeX 渲染
 npm run qa:pwa          # 安装提示、Service Worker、离线启动
 npm run qa:pwa-files    # .paligraph file_handlers 与 launchQueue 打开文件
+npm run qa:wco          # 沉浸式标题栏、窗口拖动区与系统按钮避让
 npm run qa:backup       # 超过 100 笔的备份提醒与可编辑文件导出
 npm run qa:images       # 插入图片、选中、旋转、复制、删除、撤销
 npm run qa:image-resize # 图片角点等比缩放与撤销

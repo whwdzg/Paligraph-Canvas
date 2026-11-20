@@ -25,6 +25,7 @@ import { ToastHost } from './components/common/ToastHost';
 import { useI18n } from './i18n/I18nProvider';
 import { useNotes } from './hooks/useNotes';
 import { usePwaInstall } from './hooks/usePwaInstall';
+import { useWindowControlsOverlay } from './hooks/useWindowControlsOverlay';
 import { inkStrokeCount, shouldSuggestBackup } from './lib/backup';
 import { useThemeSync } from './hooks/useTheme';
 import { useToasts } from './hooks/useToasts';
@@ -104,9 +105,9 @@ function LibraryEmpty({
   );
 }
 
-function AppSkeleton() {
+function AppSkeleton({ windowControlsOverlay }: { windowControlsOverlay?: boolean }) {
   return (
-    <div className="app-shell app-skeleton" aria-busy="true">
+    <div className={`app-shell app-skeleton ${windowControlsOverlay ? 'is-wco' : ''}`.trim()} aria-busy="true">
       <aside className="sidebar skeleton-sidebar">
         <div className="skeleton-brand">
           <span className="skeleton-block skeleton-mark" />
@@ -157,6 +158,7 @@ export default function App() {
     }
   });
   const pwa = usePwaInstall();
+  const windowControlsOverlay = useWindowControlsOverlay();
   const [importOpen, setImportOpen] = useState(false);
   const [sourceOpen, setSourceOpen] = useState(false);
   const [backgroundOpen, setBackgroundOpen] = useState(false);
@@ -750,7 +752,7 @@ export default function App() {
     !activeHasImages &&
     !activeNote?.markdown;
 
-  if (store.loading) return <AppSkeleton />;
+  if (store.loading) return <AppSkeleton windowControlsOverlay={windowControlsOverlay} />;
 
   if (store.fatalError && !fatalDismissed) {
     return (
@@ -768,7 +770,7 @@ export default function App() {
   }
 
   return (
-    <div className={`app-shell ${sidebarOpen ? 'sidebar-open' : ''}`.trim()}>
+    <div className={`app-shell ${sidebarOpen ? 'sidebar-open' : ''} ${windowControlsOverlay ? 'is-wco' : ''}`.trim()}>
       <NoteSidebar
         notes={store.notes}
         folders={store.folders}

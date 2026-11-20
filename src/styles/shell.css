@@ -1975,3 +1975,71 @@
     margin-bottom: 2px;
   }
 }
+
+/* ------------------------------------------------ PWA window controls overlay */
+/*
+ * In an installed Chromium PWA the app can own the native titlebar. The
+ * header spans that strip, provides the drag region, and reserves the right
+ * side for Windows minimise/maximise/close buttons.
+ */
+.app-shell.is-wco {
+  --wco-header-height: max(56px, var(--wco-titlebar-height, 40px));
+  --header-height: var(--wco-header-height);
+  height: 100dvh;
+  padding-top: var(--wco-header-height);
+}
+
+.app-shell.is-wco .sidebar,
+.app-shell.is-wco .editor-shell,
+.app-shell.is-wco.app-skeleton .skeleton-sidebar,
+.app-shell.is-wco.app-skeleton .skeleton-main {
+  height: calc(100dvh - var(--wco-header-height));
+}
+
+.app-shell.is-wco .editor-header {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 200;
+  height: var(--wco-header-height);
+  padding-left: max(16px, calc(var(--wco-titlebar-left, 0px) + 12px));
+  padding-right: calc(var(--wco-controls-width, 0px) + 16px);
+  border-bottom: 1px solid var(--border);
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.app-shell.is-wco .editor-header button,
+.app-shell.is-wco .editor-header input,
+.app-shell.is-wco .editor-header .export-wrap,
+.app-shell.is-wco .editor-header .export-menu,
+.app-shell.is-wco .editor-header .editor-actions,
+.app-shell.is-wco .editor-header .backup-chip {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+.app-shell.is-wco .editor-header .title-stack {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.app-shell.is-wco .editor-header .note-title-input {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
+@media (max-width: 920px) {
+  .app-shell.is-wco .sidebar {
+    top: var(--wco-header-height);
+  }
+}
+
+@media (max-width: 640px) {
+  .app-shell.is-wco {
+    --wco-header-height: max(52px, var(--wco-titlebar-height, 40px));
+  }
+
+  .app-shell.is-wco .editor-header {
+    padding-right: calc(var(--wco-controls-width, 0px) + 10px);
+  }
+}
