@@ -584,7 +584,7 @@ ${inkGroup}
 export function exportEditableFile(note: Note): void {
   downloadBlob(
     safeFilename(note.title, 'paligraph'),
-    new Blob([serializeEditableNote(note)], { type: 'application/json;charset=utf-8' }),
+    new Blob([serializeEditableNote(note)], { type: 'application/x-paligraph+json;charset=utf-8' }),
   );
 }
 

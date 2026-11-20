@@ -345,7 +345,7 @@
   "toast.folderRenamed": "Folder renamed",
   "toast.folderDeleted": "Folder deleted",
   "pwa.title": "Install Paligraph",
-  "pwa.description": "Install Paligraph as an app for a focused window, home-screen icon and offline access.",
+  "pwa.description": "Install as an app for a standalone window, desktop/home-screen icon, offline use and opening .paligraph files.",
   "pwa.install": "Install app",
   "pwa.installed": "Paligraph is installed",
   "pwa.installedBody": "You are using the installed app experience.",
@@ -386,5 +386,7 @@
   "shapes.eyebrow": "Shape library",
   "shapes.hint": "Click a shape to place it at the centre of the canvas. It is selected so you can move, resize and rotate it.",
   "background.axes": "Axes",
-  "background.axesHint": "Shows numbered axes, the origin, x/y directions and a straight criss-cross grid; at 600% the grid keeps 1-unit intervals."
+  "background.axesHint": "Shows numbered axes, the origin, x/y directions and a straight criss-cross grid; at 600% the grid keeps 1-unit intervals.",
+  "pwa.fileAssoc": "After installing, right-click a .paligraph file in Explorer → Open with → Paligraph (or set it as the default app).",
+  "pwa.openUnsupported": "Only .paligraph notes can be opened this way."
 }

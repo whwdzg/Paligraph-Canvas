@@ -345,7 +345,7 @@
   "toast.folderRenamed": "文件夹已重命名",
   "toast.folderDeleted": "文件夹已删除",
   "pwa.title": "安装 Paligraph",
-  "pwa.description": "安装为应用后可使用独立窗口、桌面/主屏幕图标，并支持离线打开。",
+  "pwa.description": "安装为应用后可使用独立窗口、桌面/主屏幕图标、离线打开，并可直接打开 .paligraph 文件。",
   "pwa.install": "安装应用",
   "pwa.installed": "Paligraph 已安装",
   "pwa.installedBody": "当前正在以已安装应用的方式运行。",
@@ -386,5 +386,7 @@
   "shapes.eyebrow": "图形库",
   "shapes.hint": "点击图形即可放到画布中心，并自动选中，可移动、缩放和旋转。",
   "background.axes": "坐标轴",
-  "background.axesHint": "显示数字刻度、原点、x/y 正方向与直线交叉网格；放大到 600% 时仍保留 1 个世界单位为间隔。"
+  "background.axesHint": "显示数字刻度、原点、x/y 正方向与直线交叉网格；放大到 600% 时仍保留 1 个世界单位为间隔。",
+  "pwa.fileAssoc": "安装后可在文件资源管理器中右键 .paligraph → 打开方式 → Paligraph，或将其设为默认应用。",
+  "pwa.openUnsupported": "这种方式只能打开 .paligraph 笔记文件。"
 }

@@ -2,6 +2,17 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.12.0] — 2026-11-21
+
+### PWA file association
+
+- Added a Web App Manifest `file_handlers` entry for `.paligraph` files using the custom `application/x-paligraph+json` MIME type.
+- Added a `launchQueue` consumer that imports launched files into the note library, works for cold starts and for an already-running installed PWA, and supports multiple files.
+- Changed editable-note downloads to use the custom MIME type.
+- Added a Settings → About note explaining Windows “Open with → Paligraph” and default-app setup.
+- Added `qa:pwa-files`, which verifies the manifest handler and simulates a launched file.
+- Installed older PWAs may need one reinstall/update before Windows registers the new file type.
+
 ## [1.11.1] — 2026-11-21
 
 ### Fixed

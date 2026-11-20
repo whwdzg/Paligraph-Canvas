@@ -14,6 +14,14 @@
   "lang": "zh-CN",
   "dir": "ltr",
   "prefer_related_applications": false,
+  "file_handlers": [
+    {
+      "action": "./",
+      "accept": {
+        "application/x-paligraph+json": [".paligraph"]
+      }
+    }
+  ],
   "launch_handler": {
     "client_mode": ["focus-existing", "auto"]
   },

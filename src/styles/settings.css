@@ -795,6 +795,13 @@
   height: 13px;
 }
 
+.pwa-file-assoc {
+  margin-top: 10px;
+  color: var(--text-3);
+  font-size: 9.5px;
+  line-height: 1.5;
+}
+
 .pwa-steps {
   display: flex;
   flex-direction: column;

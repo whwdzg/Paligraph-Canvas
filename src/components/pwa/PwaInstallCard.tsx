@@ -39,6 +39,7 @@ export function PwaInstallCard({ pwa, onInstall }: PwaInstallCardProps) {
           </button>
         ) : null}
       </div>
+      <p className="pwa-file-assoc">{t('pwa.fileAssoc')}</p>
       {!pwa.installed && !pwa.canInstall ? (
         <div className="pwa-steps">
           {pwa.isIos ? (

@@ -345,7 +345,7 @@
   "toast.folderRenamed": "資料夾已重新命名",
   "toast.folderDeleted": "資料夾已刪除",
   "pwa.title": "安裝 Paligraph",
-  "pwa.description": "安裝為應用程式後可使用獨立視窗、桌面/主畫面圖示，並支援離線開啟。",
+  "pwa.description": "安裝為應用程式後可使用獨立視窗、桌面/主畫面圖示、離線開啟，並可直接開啟 .paligraph 檔案。",
   "pwa.install": "安裝應用程式",
   "pwa.installed": "Paligraph 已安裝",
   "pwa.installedBody": "目前正以已安裝應用程式的方式執行。",
@@ -386,5 +386,7 @@
   "shapes.eyebrow": "圖形庫",
   "shapes.hint": "點擊圖形即可放到畫布中心，並自動選取，可移動、縮放和旋轉。",
   "background.axes": "坐標軸",
-  "background.axesHint": "顯示數字刻度、原點、x/y 正方向與直線交叉網格；放大到 600% 時仍保留 1 個世界單位為間隔。"
+  "background.axesHint": "顯示數字刻度、原點、x/y 正方向與直線交叉網格；放大到 600% 時仍保留 1 個世界單位為間隔。",
+  "pwa.fileAssoc": "安裝後可在檔案總管中右鍵 .paligraph → 開啟方式 → Paligraph，或設為預設應用程式。",
+  "pwa.openUnsupported": "這種方式只能開啟 .paligraph 筆記檔案。"
 }

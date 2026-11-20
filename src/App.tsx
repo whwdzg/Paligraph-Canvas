@@ -48,6 +48,20 @@ import { useSettingsStore } from './state/settings';
 
 type ToolWithOptions = Exclude<InkTool, 'lasso'>;
 
+interface PwaLaunchFile {
+  getFile: () => Promise<File>;
+}
+
+interface PwaLaunchParams {
+  files?: PwaLaunchFile[];
+}
+
+interface PwaLaunchQueue {
+  setConsumer: (consumer: (params: PwaLaunchParams) => void) => void;
+}
+
+type PwaFileWindow = Window & { launchQueue?: PwaLaunchQueue };
+
 // Markdown, Obsidian scanning and PDF generation live in on-demand chunks so
 // the first paint only ships the canvas and UI.
 const ImportDialog = lazy(async () => {
@@ -165,6 +179,7 @@ export default function App() {
   const [previewImage, setPreviewImage] = useState<{ src: string; alt: string } | null>(null);
   const surfaceRef = useRef<DrawingSurfaceHandle>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const importEditableRef = useRef<(files: File[]) => Promise<void>>(async () => {});
   const toolDockRef = useRef<HTMLDivElement>(null);
   const toolOptionsRef = useRef<HTMLDivElement>(null);
   const shapePickerRef = useRef<HTMLDivElement>(null);
@@ -529,6 +544,42 @@ export default function App() {
     setSidebarOpen(false);
     showToast(t('import.done', { count: created.length }), 'success');
   };
+
+  importEditableRef.current = handleImportEditable;
+
+  useEffect(() => {
+    if (store.loading) return;
+    const launchQueue = (window as PwaFileWindow).launchQueue;
+    if (!launchQueue) return;
+    let active = true;
+
+    launchQueue.setConsumer(async (params) => {
+      if (!active) return;
+      const handles = params.files ?? [];
+      if (!handles.length) return;
+      const files: File[] = [];
+      for (const handle of handles) {
+        try {
+          const file = await handle.getFile();
+          if (file.name.toLowerCase().endsWith('.paligraph') || file.type === 'application/x-paligraph+json') {
+            files.push(file);
+          }
+        } catch (error) {
+          console.error('Could not read launched file', error);
+        }
+      }
+      if (!active) return;
+      if (!files.length) {
+        showToast(t('pwa.openUnsupported'), 'error');
+        return;
+      }
+      await importEditableRef.current(files);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [showToast, store.loading, t]);
 
   const handleDeleteNote = () => {
     if (!noteToDelete) return;

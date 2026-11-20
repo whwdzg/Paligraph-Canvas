@@ -345,7 +345,7 @@
   "toast.folderRenamed": "フォルダー名を変更しました",
   "toast.folderDeleted": "フォルダーを削除しました",
   "pwa.title": "Paligraph をインストール",
-  "pwa.description": "アプリとしてインストールすると、独立ウィンドウ、ホーム画面アイコン、オフライン起動が使えます。",
+  "pwa.description": "アプリとしてインストールすると、独立ウィンドウ、デスクトップ/ホーム画面アイコン、オフライン利用、.paligraph ファイルの直接オープンが可能になります。",
   "pwa.install": "アプリをインストール",
   "pwa.installed": "Paligraph はインストール済みです",
   "pwa.installedBody": "インストール済みアプリとして実行中です。",
@@ -386,5 +386,7 @@
   "shapes.eyebrow": "図形ライブラリ",
   "shapes.hint": "図形をクリックするとキャンバス中央に配置され、選択状態になります。移動・拡大縮小・回転ができます。",
   "background.axes": "座標軸",
-  "background.axesHint": "数字付きの座標軸、原点、x/y 方向、直線のクロスグリッドを表示します。600% でも 1 ワールド単位の間隔を保ちます。"
+  "background.axesHint": "数字付きの座標軸、原点、x/y 方向、直線のクロスグリッドを表示します。600% でも 1 ワールド単位の間隔を保ちます。",
+  "pwa.fileAssoc": "インストール後、エクスプローラーで .paligraph を右クリック → プログラムから開く → Paligraph（または既定のアプリに設定）を選びます。",
+  "pwa.openUnsupported": "この方法で開けるのは .paligraph ノートのみです。"
 }
