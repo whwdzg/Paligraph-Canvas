@@ -1,5 +1,5 @@
-import { clamp, distance, pointsBounds, unionBounds } from '../geometry';
-import type { Bounds, Stroke } from '../types';
+import { clamp, distance, distanceToSegmentSquared, pointsBounds, unionBounds } from '../geometry';
+import type { Bounds, InkPoint, Stroke } from '../types';
 
 /**
  * A compact, local handwriting recogniser for arithmetic and one-variable
@@ -16,7 +16,15 @@ const MASK_SIZE = 32;
 const GLYPH_CANVAS = 64;
 const OPERATORS = new Set(['+', '-', '×', '÷', '=']);
 const DIGITS = new Set('0123456789'.split(''));
-const VARIABLES = new Set(['x', 'y', 'z', 'a', 'b', 'c', 'n', 't', 'd']);
+const LETTERS = 'abcdefghijklmnopqrstuvwxyz'.split('');
+const VARIABLES = new Set(LETTERS);
+// These letters are routinely confused with digits. Prefer the digit only for
+// this small set; x/y/a/c/... should stay letters even when a digit template is
+// marginally closer (which is common after bitmap normalisation).
+const DIGIT_LOOKALIKE_LETTERS = new Set(['z', 'o', 'l', 'i', 's', 'b', 'g']);
+const DESCENDER_LETTERS = new Set(['g', 'j', 'p', 'q', 'y']);
+const ASCENDER_LETTERS = new Set(['b', 'd', 'f', 'h', 'k', 'l', 't']);
+const HOLED_SYMBOLS = new Set(['a', 'b', 'd', 'e', 'g', 'o', 'p', 'q', '0', '6', '8', '9']);
 
 export interface MathGlyph {
   symbol: string;
@@ -25,6 +33,10 @@ export interface MathGlyph {
   width: number;
   height: number;
   strokes: Stroke[];
+  /** Enclosed background regions (a, b, o, 0...), used for letter disambiguation. */
+  holes?: number;
+  /** Ranked template candidates, used for row-level letter disambiguation. */
+  candidates?: Array<{ symbol: string; score: number }>;
 }
 
 export interface VerticalMath {
@@ -66,6 +78,8 @@ interface TemplateMask {
   mask: Uint8Array;
   distance: Float32Array;
   aspect: number;
+  /** <1 prioritises hand-authored stroke skeletons over system-font outlines. */
+  weight: number;
 }
 
 let templateCache: TemplateMask[] | null = null;
@@ -133,6 +147,62 @@ function shouldGroup(a: Group, b: Group): boolean {
   if (aFlat && bFlat && overlap.h > minW * 0.55 && overlap.vGap <= Math.max(8, Math.min(aw, bw) * 0.5)) return true;
   // Strokes whose bounds barely touch but clearly belong together.
   if (overlap.v > minH * 0.55 && overlap.hGap <= Math.max(2, maxH * 0.045)) return true;
+
+  // Strokes that meet at a shared endpoint are one glyph (y, i, multi-stroke
+  // letters). Do not chain two nearby characters that merely have close
+  // bounding boxes.
+  const endpointsOf = (group: Group): InkPoint[] => {
+    const first = group.strokes[0]?.points;
+    const last = group.strokes[group.strokes.length - 1]?.points;
+    if (!first || !last) return [];
+    return [first[0], first[first.length - 1], last[0], last[last.length - 1]];
+  };
+  const scale = Math.max(aw, ah, bw, bh);
+  const tolerance = Math.max(4, scale * 0.06);
+  const touching = endpointsOf(a).some((left) =>
+    endpointsOf(b).some((right) => distance(left.x, left.y, right.x, right.y) <= tolerance),
+  );
+  if (touching) return true;
+
+  // A stroke can also land in the middle of another one (the descender of y,
+  // the stem of t/f). Check both endpoint sets against the opposite polyline.
+  const endpointOnStroke = (endpoints: InkPoint[], group: Group): boolean =>
+    endpoints.some((point) =>
+      group.strokes.some((stroke) => {
+        for (let index = 1; index < stroke.points.length; index += 1) {
+          const previous = stroke.points[index - 1];
+          const current = stroke.points[index];
+          if (distanceToSegmentSquared(point.x, point.y, previous.x, previous.y, current.x, current.y) <= tolerance * tolerance) {
+            return true;
+          }
+        }
+        return false;
+      }),
+    );
+  if (endpointOnStroke(endpointsOf(a), b) || endpointOnStroke(endpointsOf(b), a)) return true;
+
+  // A dot directly above a tall stem is the i/j dot, not a separate decimal
+  // point. Ordinary decimal points sit on the baseline beside a digit.
+  const aDot = aw < 8 && ah < 8;
+  const bDot = bw < 8 && bh < 8;
+  if (aDot !== bDot) {
+    const dot = aDot ? ab : bb;
+    const stem = aDot ? bb : ab;
+    const stemWidth = Math.max(1, stem.maxX - stem.minX);
+    const stemHeight = Math.max(1, stem.maxY - stem.minY);
+    const dotCenter = (dot.minX + dot.maxX) / 2;
+    const stemCenter = (stem.minX + stem.maxX) / 2;
+    const verticalGap = stem.minY - dot.maxY;
+    if (
+      stemHeight > 12 &&
+      stemWidth < stemHeight * 0.9 &&
+      Math.abs(dotCenter - stemCenter) < Math.max(7, stemWidth * 0.8) &&
+      verticalGap >= -3 &&
+      verticalGap < Math.max(12, stemHeight * 0.28)
+    ) {
+      return true;
+    }
+  }
   return false;
 }
 
@@ -243,6 +313,40 @@ function extractMask(canvas: HTMLCanvasElement): { mask: Uint8Array; aspect: num
   return { mask, aspect: cropWidth / cropHeight };
 }
 
+function countHoles(mask: Uint8Array, size = MASK_SIZE): number {
+  const visited = new Uint8Array(size * size);
+  const stack: number[] = [];
+  const push = (x: number, y: number): void => {
+    if (x < 0 || y < 0 || x >= size || y >= size) return;
+    const index = y * size + x;
+    if (visited[index] || mask[index]) return;
+    visited[index] = 1;
+    stack.push(index);
+  };
+  for (let x = 0; x < size; x += 1) {
+    push(x, 0);
+    push(x, size - 1);
+  }
+  for (let y = 0; y < size; y += 1) {
+    push(0, y);
+    push(size - 1, y);
+  }
+  while (stack.length) {
+    const index = stack.pop()!;
+    const x = index % size;
+    const y = Math.floor(index / size);
+    push(x - 1, y);
+    push(x + 1, y);
+    push(x, y - 1);
+    push(x, y + 1);
+  }
+  let holes = 0;
+  for (let index = 0; index < mask.length; index += 1) {
+    if (!mask[index] && !visited[index]) holes += 1;
+  }
+  return holes;
+}
+
 function distanceTransform(mask: Uint8Array, size = MASK_SIZE): Float32Array {
   const distances = new Float32Array(size * size);
   const infinity = 1e7;
@@ -294,7 +398,90 @@ function makeTemplate(symbol: string, font: string): TemplateMask | null {
   ctx.fillText(glyph, GLYPH_CANVAS / 2, GLYPH_CANVAS / 2 + 1);
   const { mask, aspect } = extractMask(canvas);
   if (!mask.some((value) => value === 1)) return null;
-  return { symbol, mask, distance: distanceTransform(mask), aspect };
+  return { symbol, mask, distance: distanceTransform(mask), aspect, weight: 1 };
+}
+
+type SketchPoint = [number, number];
+
+function arcSketch(cx: number, cy: number, rx: number, ry: number, start = 0, end = Math.PI * 2): SketchPoint[] {
+  const points: SketchPoint[] = [];
+  const steps = 20;
+  for (let index = 0; index <= steps; index += 1) {
+    const angle = start + ((end - start) * index) / steps;
+    points.push([cx + Math.cos(angle) * rx, cy + Math.sin(angle) * ry]);
+  }
+  return points;
+}
+
+/**
+ * Handwriting skeletons for lower-case variables. System-font glyphs are
+ * usually closed outlines; these open polylines match the way a pen actually
+ * draws letters (especially y, a, n and g).
+ */
+const SKELETONS: Record<string, SketchPoint[][]> = {
+  a: [arcSketch(0.4, 0.56, 0.3, 0.25), [[0.7, 0.56], [0.76, 0.8]]],
+  b: [[[0.3, 0.08], [0.3, 0.82]], arcSketch(0.55, 0.6, 0.29, 0.23)],
+  c: [[[0.72, 0.32], [0.45, 0.3], [0.26, 0.5], [0.3, 0.72], [0.5, 0.84], [0.72, 0.8]]],
+  d: [arcSketch(0.45, 0.6, 0.29, 0.23), [[0.75, 0.08], [0.75, 0.82]]],
+  e: [[[0.72, 0.5], [0.35, 0.52], [0.25, 0.65], [0.3, 0.8], [0.52, 0.86], [0.72, 0.78]]],
+  f: [[[0.66, 0.1], [0.5, 0.58], [0.42, 0.88]], [[0.28, 0.34], [0.7, 0.34]]],
+  g: [arcSketch(0.45, 0.5, 0.28, 0.23), [[0.73, 0.5], [0.7, 0.82], [0.55, 0.95]]],
+  h: [[[0.28, 0.08], [0.28, 0.82]], [[0.28, 0.46], [0.55, 0.32], [0.7, 0.48], [0.7, 0.82]]],
+  i: [[[0.46, 0.12], [0.47, 0.14]], [[0.46, 0.36], [0.46, 0.82]]],
+  j: [[[0.58, 0.12], [0.59, 0.14]], [[0.58, 0.36], [0.58, 0.74], [0.48, 0.92]]],
+  k: [[[0.3, 0.08], [0.3, 0.82]], [[0.68, 0.38], [0.3, 0.6]], [[0.4, 0.54], [0.72, 0.82]]],
+  l: [[[0.42, 0.08], [0.42, 0.82]]],
+  m: [[[0.2, 0.36], [0.2, 0.82]], [[0.2, 0.46], [0.35, 0.32], [0.48, 0.46], [0.48, 0.82]], [[0.48, 0.46], [0.63, 0.32], [0.78, 0.46], [0.78, 0.82]]],
+  n: [[[0.28, 0.36], [0.28, 0.82]], [[0.28, 0.46], [0.48, 0.32], [0.7, 0.46], [0.7, 0.82]]],
+  o: [arcSketch(0.5, 0.58, 0.3, 0.24)],
+  p: [[[0.3, 0.38], [0.3, 0.98]], arcSketch(0.55, 0.55, 0.29, 0.23)],
+  q: [arcSketch(0.45, 0.55, 0.29, 0.23), [[0.74, 0.55], [0.74, 0.98]]],
+  r: [[[0.3, 0.38], [0.3, 0.82]], [[0.3, 0.48], [0.48, 0.34], [0.66, 0.44]]],
+  s: [[[0.72, 0.32], [0.5, 0.25], [0.3, 0.34], [0.32, 0.48], [0.5, 0.57], [0.68, 0.65], [0.7, 0.8], [0.5, 0.9], [0.3, 0.83]]],
+  t: [[[0.5, 0.1], [0.5, 0.82]], [[0.25, 0.34], [0.75, 0.34]]],
+  u: [[[0.28, 0.38], [0.28, 0.7], [0.35, 0.82], [0.54, 0.82], [0.68, 0.7], [0.68, 0.38]]],
+  v: [[[0.25, 0.36], [0.5, 0.82], [0.75, 0.36]]],
+  w: [[[0.15, 0.36], [0.34, 0.82], [0.5, 0.56], [0.66, 0.82], [0.85, 0.36]]],
+  x: [[[0.25, 0.38], [0.75, 0.82]], [[0.75, 0.38], [0.25, 0.82]]],
+  y: [[[0.25, 0.36], [0.5, 0.66], [0.75, 0.36]], [[0.5, 0.66], [0.38, 0.96]]],
+  z: [[[0.25, 0.4], [0.75, 0.4], [0.25, 0.8], [0.75, 0.8]]],
+};
+
+function makeSkeletonTemplate(symbol: string, paths: SketchPoint[][]): TemplateMask | null {
+  if (typeof document === 'undefined') return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = GLYPH_CANVAS;
+  canvas.height = GLYPH_CANVAS;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  const all = paths.flat();
+  const minX = Math.min(...all.map(([x]) => x));
+  const maxX = Math.max(...all.map(([x]) => x));
+  const minY = Math.min(...all.map(([, y]) => y));
+  const maxY = Math.max(...all.map(([, y]) => y));
+  const width = Math.max(0.01, maxX - minX);
+  const height = Math.max(0.01, maxY - minY);
+  const scale = Math.min((GLYPH_CANVAS - 18) / width, (GLYPH_CANVAS - 18) / height);
+  const offsetX = (GLYPH_CANVAS - width * scale) / 2;
+  const offsetY = (GLYPH_CANVAS - height * scale) / 2;
+  ctx.strokeStyle = '#000';
+  ctx.fillStyle = '#000';
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 3.6;
+  for (const path of paths) {
+    ctx.beginPath();
+    path.forEach(([x, y], index) => {
+      const px = offsetX + (x - minX) * scale;
+      const py = offsetY + (y - minY) * scale;
+      if (index === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    });
+    ctx.stroke();
+  }
+  const { mask, aspect } = extractMask(canvas);
+  if (!mask.some((value) => value === 1)) return null;
+  return { symbol, mask, distance: distanceTransform(mask), aspect, weight: 0.78 };
 }
 
 function templates(): TemplateMask[] {
@@ -307,7 +494,7 @@ function templates(): TemplateMask[] {
   const symbols = [
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
     '+', '-', '×', '÷', '=', '*', '/', '^', '(', ')', 'Σ', 'π', '√',
-    'x', 'y', 'z', 'a', 'b', 'c', 'n', 't', 'd',
+    ...LETTERS,
   ];
   const result: TemplateMask[] = [];
   for (const font of fonts) {
@@ -315,6 +502,12 @@ function templates(): TemplateMask[] {
       const template = makeTemplate(symbol, font);
       if (template) result.push(template);
     }
+  }
+  for (const symbol of LETTERS) {
+    const paths = SKELETONS[symbol];
+    if (!paths) continue;
+    const template = makeSkeletonTemplate(symbol, paths);
+    if (template) result.push(template);
   }
   templateCache = result;
   return result;
@@ -337,13 +530,73 @@ function compareMasks(user: Uint8Array, userAspect: number): Array<{ symbol: str
     }
     const chamfer = (userToTemplate / userCount) * 0.62 + (templateToUser / Math.max(1, templateCount)) * 0.38;
     const aspectPenalty = Math.abs(Math.log(Math.max(0.1, userAspect) / Math.max(0.1, template.aspect))) * 0.52;
-    const score = chamfer + aspectPenalty;
+    const score = (chamfer + aspectPenalty) * template.weight;
     const current = scores.get(template.symbol);
     if (current === undefined || score < current) scores.set(template.symbol, score);
   }
   return [...scores.entries()]
     .map(([symbol, score]) => ({ symbol, score }))
     .sort((a, b) => a.score - b.score);
+}
+
+function segmentCrosses(a: Stroke, b: Stroke): boolean {
+  if (a.points.length < 2 || b.points.length < 2) return false;
+  const a0 = a.points[0];
+  const a1 = a.points[a.points.length - 1];
+  const b0 = b.points[0];
+  const b1 = b.points[b.points.length - 1];
+  const cross = (p: InkPoint, q: InkPoint, r: InkPoint): number =>
+    (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+  const d1 = cross(a0, a1, b0);
+  const d2 = cross(a0, a1, b1);
+  const d3 = cross(b0, b1, a0);
+  const d4 = cross(b0, b1, a1);
+  return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+}
+
+/** Detects the two-stroke "v + descender" shape of a handwritten y. */
+function looksLikeY(group: Group): boolean {
+  if (group.strokes.length !== 2) return false;
+  const bounds = group.bounds;
+  const height = Math.max(1, bounds.maxY - bounds.minY);
+  let fork: InkPoint | null = null;
+  let descender: Stroke | null = null;
+
+  for (const stroke of group.strokes) {
+    const points = stroke.points;
+    if (points.length < 3) continue;
+    let lowIndex = 0;
+    for (let index = 1; index < points.length; index += 1) {
+      if (points[index].y > points[lowIndex].y) lowIndex = index;
+    }
+    if (lowIndex === 0 || lowIndex === points.length - 1) continue;
+    const start = points[0];
+    const end = points[points.length - 1];
+    const low = points[lowIndex];
+    if (start.y > low.y - height * 0.12 || end.y > low.y - height * 0.12) continue;
+    if (!((start.x < low.x && end.x > low.x) || (start.x > low.x && end.x < low.x))) continue;
+    fork = low;
+    break;
+  }
+  if (!fork) return false;
+
+  for (const stroke of group.strokes) {
+    if (stroke.points.includes(fork)) continue;
+    const points = stroke.points;
+    if (points.length < 2) continue;
+    const first = points[0];
+    const last = points[points.length - 1];
+    const firstDistance = distance(first.x, first.y, fork.x, fork.y);
+    const lastDistance = distance(last.x, last.y, fork.x, fork.y);
+    const near = firstDistance < lastDistance ? first : last;
+    const far = firstDistance < lastDistance ? last : first;
+    if (distance(near.x, near.y, fork.x, fork.y) > Math.max(10, height * 0.18)) continue;
+    if (far.y > fork.y + height * 0.12) {
+      descender = stroke;
+      break;
+    }
+  }
+  return Boolean(descender);
 }
 
 function classifyOperators(group: Group): { symbol: string; confidence: number } | null {
@@ -366,9 +619,28 @@ function classifyOperators(group: Group): { symbol: string; confidence: number }
       return { symbol: '=', confidence: 0.9 };
     }
     if ((a.horizontal && b.vertical) || (a.vertical && b.horizontal)) {
-      if (overlap.h > -width * 0.12 && overlap.v > -height * 0.12) return { symbol: '+', confidence: 0.86 };
+      const horizontal = a.horizontal ? a : b;
+      const vertical = a.vertical ? a : b;
+      const horizontalCenterX = (horizontal.bounds.minX + horizontal.bounds.maxX) / 2;
+      const horizontalCenterY = (horizontal.bounds.minY + horizontal.bounds.maxY) / 2;
+      const verticalCenterX = (vertical.bounds.minX + vertical.bounds.maxX) / 2;
+      const verticalCenterY = (vertical.bounds.minY + vertical.bounds.maxY) / 2;
+      const intersectionInside =
+        verticalCenterY >= horizontal.bounds.minY - 3 &&
+        verticalCenterY <= horizontal.bounds.maxY + 3 &&
+        horizontalCenterX >= vertical.bounds.minX - 3 &&
+        horizontalCenterX <= vertical.bounds.maxX + 3;
+      const above = horizontalCenterY - vertical.bounds.minY;
+      const below = vertical.bounds.maxY - horizontalCenterY;
+      const balancedCross =
+        Math.min(above, below) / Math.max(1, above, below) > 0.34;
+      const crossesNearCenter =
+        Math.abs(horizontalCenterX - verticalCenterX) < horizontal.width * 0.34 &&
+        Math.abs(verticalCenterY - horizontalCenterY) < vertical.height * 0.24 &&
+        balancedCross;
+      if (intersectionInside && crossesNearCenter) return { symbol: '+', confidence: 0.86 };
     }
-    if (a.diagonal && b.diagonal) {
+    if (a.diagonal && b.diagonal && segmentCrosses(group.strokes[0], group.strokes[1])) {
       return { symbol: '×', confidence: 0.78 };
     }
   }
@@ -387,6 +659,9 @@ function recognizeGroup(group: Group): MathGlyph | null {
   const height = group.bounds.maxY - group.bounds.minY;
   if (width < 0.5 && height < 0.5) return null;
   const bounds = group.bounds;
+  if (looksLikeY(group)) {
+    return { symbol: 'y', confidence: 0.82, bounds, width, height, strokes: group.strokes };
+  }
   const operator = classifyOperators(group);
   if (operator) {
     return { ...operator, bounds, width, height, strokes: group.strokes };
@@ -402,13 +677,26 @@ function recognizeGroup(group: Group): MathGlyph | null {
   // a digit when the score is within a small margin; this keeps ordinary
   // arithmetic reliable while still allowing distinct x/y/z glyphs through.
   const bestDigit = scores.find((item) => DIGITS.has(item.symbol));
-  if (bestDigit && VARIABLES.has(best.symbol) && bestDigit.score <= best.score + 0.12) {
+  if (
+    bestDigit &&
+    DIGIT_LOOKALIKE_LETTERS.has(best.symbol) &&
+    bestDigit.score <= best.score + 0.1
+  ) {
     best = bestDigit;
   }
   const second = scores.find((item) => item.symbol !== best.symbol);
   const separation = second ? Math.max(0, second.score - best.score) : 0.5;
   const confidence = clamp(0.8 - best.score * 0.075 + separation * 0.08, 0.08, 0.97);
-  return { symbol: best.symbol, confidence, bounds, width, height, strokes: group.strokes };
+  return {
+    symbol: best.symbol,
+    confidence,
+    bounds,
+    width,
+    height,
+    strokes: group.strokes,
+    holes: countHoles(mask),
+    candidates: scores.slice(0, 7),
+  };
 }
 
 function rowsFromGlyphs(glyphs: MathGlyph[]): MathGlyph[][] {
@@ -437,6 +725,88 @@ function rowsFromGlyphs(glyphs: MathGlyph[]): MathGlyph[][] {
   return rows;
 }
 
+function candidateScore(glyph: MathGlyph, symbol: string): number {
+  return glyph.candidates?.find((candidate) => candidate.symbol === symbol)?.score ?? 9;
+}
+
+function bestCandidate(
+  glyph: MathGlyph,
+  predicate: (symbol: string) => boolean,
+  margin = 0.22,
+): string | null {
+  const current = candidateScore(glyph, glyph.symbol);
+  const candidate = glyph.candidates?.find(
+    (item) => item.symbol !== glyph.symbol && predicate(item.symbol) && item.score <= current + margin,
+  );
+  return candidate?.symbol ?? null;
+}
+
+/**
+ * Template matching is local by nature; this pass uses the whole row's
+ * baseline and context to resolve the classic ambiguities: n/0, z/2, a/q and
+ * y/r. Descenders must actually descend, and digits inside a letter run are
+ * more likely letters.
+ */
+function resolveRowGlyphs(row: MathGlyph[]): void {
+  if (row.length < 2) return;
+  const bottoms = row.map((glyph) => glyph.bounds.maxY).sort((a, b) => a - b);
+  const baseline = bottoms[Math.floor(bottoms.length / 2)];
+  const rowHeight = Math.max(...row.map((glyph) => glyph.height));
+  const threshold = Math.max(3, rowHeight * 0.08);
+  const heights = row.map((glyph) => glyph.height).sort((a, b) => a - b);
+  const medianHeight = heights[Math.floor(heights.length / 2)];
+  const content = row.filter((glyph) => !OPERATORS.has(glyph.symbol) && glyph.symbol !== '.');
+  const letterCount = content.filter((glyph) => VARIABLES.has(glyph.symbol)).length;
+  const majorityLetters = content.length > 0 && letterCount / content.length >= 0.6;
+
+  for (let index = 0; index < row.length; index += 1) {
+    const glyph = row[index];
+    if (OPERATORS.has(glyph.symbol) || glyph.symbol === '.') continue;
+    const bottom = glyph.bounds.maxY;
+    let replacement: string | null = null;
+
+    // A closed loop is strong evidence for a/b/d/o/p/q (and 0/6/8/9). This
+    // fixes the common a→n and y→p mistakes before looking at baselines.
+    if (glyph.holes !== undefined) {
+      if (glyph.holes > 0 && !HOLED_SYMBOLS.has(glyph.symbol)) {
+        replacement = bestCandidate(glyph, (symbol) => HOLED_SYMBOLS.has(symbol), 0.3);
+      } else if (glyph.holes === 0 && HOLED_SYMBOLS.has(glyph.symbol)) {
+        replacement = bestCandidate(glyph, (symbol) => !HOLED_SYMBOLS.has(symbol), 0.24);
+      }
+    }
+
+    if (!replacement && ASCENDER_LETTERS.has(glyph.symbol) && glyph.height < medianHeight * 1.06) {
+      // h/b/d/l/f/k need a tall stem; n/u/m do not.
+      replacement = bestCandidate(
+        glyph,
+        (symbol) => VARIABLES.has(symbol) && !ASCENDER_LETTERS.has(symbol) && !DESCENDER_LETTERS.has(symbol) && !HOLED_SYMBOLS.has(symbol),
+        0.24,
+      );
+    }
+
+    if (!replacement && DESCENDER_LETTERS.has(glyph.symbol) && bottom < baseline - threshold) {
+      // It was read as q/p/y but the glyph stays on the baseline.
+      replacement = bestCandidate(glyph, (symbol) => VARIABLES.has(symbol) && !DESCENDER_LETTERS.has(symbol));
+    } else if (!replacement && !DESCENDER_LETTERS.has(glyph.symbol) && bottom > baseline + threshold) {
+      // A real descender was flattened into r/u/… by bitmap normalisation.
+      replacement = bestCandidate(glyph, (symbol) => DESCENDER_LETTERS.has(symbol), 0.3);
+    }
+
+    if (!replacement && DIGITS.has(glyph.symbol) && majorityLetters) {
+      const neighbors = [row[index - 1], row[index + 1]].filter(Boolean);
+      const letterNeighbor = neighbors.some((neighbor) => VARIABLES.has(neighbor.symbol));
+      if (letterNeighbor) {
+        replacement = bestCandidate(glyph, (symbol) => VARIABLES.has(symbol), 0.24);
+      }
+    }
+
+    if (replacement) {
+      glyph.symbol = replacement;
+      glyph.confidence = Math.min(glyph.confidence, 0.7);
+    }
+  }
+}
+
 function rowText(row: MathGlyph[]): string {
   let text = '';
   for (let index = 0; index < row.length; index += 1) {
@@ -454,6 +824,20 @@ function rowText(row: MathGlyph[]): string {
     text += glyph.symbol;
   }
   return text;
+}
+
+/**
+ * Loose handwriting often turns log/sin/cos/tan letters into digit lookalikes
+ * (l0g, s1n, c0s...). Repair only when the token is directly called, so normal
+ * products such as 10g are left untouched.
+ */
+function repairFunctionNames(text: string): string {
+  return text
+    .replace(/(?:1|l)(?:0|o)(?:9|g)(?=\()/gi, 'log')
+    .replace(/(?:s|5)(?:1|i|l)(?:n|m)(?=\()/gi, 'sin')
+    .replace(/c(?:0|o)(?:s|5)(?=\()/gi, 'cos')
+    .replace(/(?:7|t)(?:4|a)(?:n|m)(?=\()/gi, 'tan')
+    .replace(/(?:1|l)(?:n|m)(?=\()/gi, 'ln');
 }
 
 function isSeparatorRow(row: MathGlyph[]): boolean {
@@ -536,6 +920,7 @@ export function recognizeMathStrokes(strokes: readonly Stroke[]): MathRecognitio
   }
 
   const rows = rowsFromGlyphs(glyphs);
+  for (const row of rows) resolveRowGlyphs(row);
   const vertical = rows.length >= 2 && !glyphs.some((glyph) => glyph.symbol === '=') ? verticalFromRows(rows) : null;
   if (vertical) {
     return {
@@ -552,7 +937,7 @@ export function recognizeMathStrokes(strokes: readonly Stroke[]): MathRecognitio
   // equations. The editable field uses semicolons as the canonical separator.
   const equationRows = rows.filter((row) => row.some((glyph) => glyph.symbol === '='));
   if (rows.length > 1 && equationRows.length === rows.length) {
-    const expression = rows.map(rowText).join(';');
+    const expression = repairFunctionNames(rows.map(rowText).join(';'));
     return {
       glyphs,
       expression,
@@ -563,7 +948,7 @@ export function recognizeMathStrokes(strokes: readonly Stroke[]): MathRecognitio
   }
 
   const symbols = rows.flatMap((row) => row.map((glyph) => glyph.symbol));
-  const expression = resolveMultiplication(symbols);
+  const expression = repairFunctionNames(resolveMultiplication(symbols));
   return {
     glyphs,
     expression,

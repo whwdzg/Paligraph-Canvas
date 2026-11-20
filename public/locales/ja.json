@@ -369,7 +369,7 @@
   "backup.chip": "バックアップ · {count}",
   "backup.hint": "ブラウザーがローカルデータを消去する場合があります。定期的に .paligraph を書き出してください。",
   "backup.reminder": "このノートには {count} 本のインクがあります。ブラウザーがローカルデータを消去する場合があるため、定期的に編集可能ファイルを書き出してください。",
-  "math.advancedHint": "未知数、セミコロン区切りの連立方程式、d/dx の微分、sum(...,n=1..10)、log10、exp に対応します。",
+  "math.advancedHint": "a–z の小文字変数、手書き関数名、セミコロン区切りの連立方程式、d/dx、sum(...)、log10、exp に対応します。",
   "math.examples": "例",
   "math.recognizeSelection": "選択した数式を認識",
   "shape.arrow": "矢印",

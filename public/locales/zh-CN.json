@@ -369,7 +369,7 @@
   "backup.chip": "备份 · {count} 笔",
   "backup.hint": "浏览器可能清理本地数据，建议定期导出 .paligraph 可编辑文件。",
   "backup.reminder": "本笔记已有 {count} 笔。浏览器可能清理本地数据，建议定期导出为可编辑文件。",
-  "math.advancedHint": "支持未知数、用分号分隔的方程组、d/dx 求导、sum(...,n=1..10) 求和、log10 与 exp。",
+  "math.advancedHint": "支持 a–z 小写变量、手写函数名、分号方程组、d/dx 求导、sum(...,n=1..10) 求和、log10 与 exp。",
   "math.examples": "示例",
   "math.recognizeSelection": "识别所选数学公式",
   "shape.arrow": "箭头",

@@ -3,7 +3,7 @@
 **灵感，落于笔尖。** A local-first notebook for ink, Markdown and the ideas in between.
 
 [![Deploy to GitHub Pages](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml/badge.svg)](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml)
-![Version](https://img.shields.io/badge/version-1.10.2-2b7fff)
+![Version](https://img.shields.io/badge/version-1.11.0-2b7fff)
 ![License](https://img.shields.io/badge/license-GPL--3.0--or--later-4c1)
 
 Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布、一套接近 Apple Notes 的悬浮工具栏、Fluent Design Sun Valley 的材质，以及可选的液态玻璃（liquid glass）质感。它把笔迹数据和 Markdown 都留在这台设备上，并可以在需要时导出为 PDF 或 Markdown。
@@ -51,7 +51,9 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 ### 手写数学与高级运算
 
 - **选择后识别**：用套索圈选公式笔迹，点击浮动工具条的数学按钮；不再依赖长按。
-- 识别器支持数字、变量 `x/y/z/a/b/c/n/t`、四则运算、幂、括号、`Σ`、`π`、`√` 等常见符号。
+- 识别器支持数字、**全部小写字母 `a–z`**、四则运算、幂、括号、`Σ`、`π`、`√` 等常见符号。
+- 加入字母上下文修正：根据行基线、字母高度、闭合孔洞和笔画连接区分 `a/n`、`y/p/r`、`n/h`、`z/2` 等易混字符；支持 `i/j` 点、`t/f` 交叉和 `y` 的竖尾结构。
+- 支持手写函数名 `log/ln/sin/cos/tan/exp` 的常见字母误识别修复。
 - 求解对话框支持：
   - 一元一次方程与数值实根（包括二次、对数、指数方程）
   - 线性方程组，例如 `x+y=5; x-y=1`
@@ -410,6 +412,7 @@ npm run qa:interactions # 绘图、套索、移动/旋转、设置、导入、PD
 npm run qa:touch        # CDP 双指长按平移、捏合缩放、快速误触
 npm run qa:features     # 荧光笔直线、橡皮、复制粘贴、设置 JSON、语言
 npm run qa:shapes-math  # 选择识别、图形吸附、高级数学与竖式
+npm run qa:math-letters # 手写字母、变量与上下文识别
 npm run qa:shapes-library # 图形库插入与坐标轴背景
 npm run qa:previews     # Markdown / Obsidian 内容预览图
 npm run qa:storage      # 设置中的存储占用读数和明细

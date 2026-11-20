@@ -369,7 +369,7 @@
   "backup.chip": "備份 · {count} 筆",
   "backup.hint": "瀏覽器可能清理本機資料，建議定期匯出 .paligraph 可編輯檔案。",
   "backup.reminder": "本筆記已有 {count} 筆。瀏覽器可能清理本機資料，建議定期匯出為可編輯檔案。",
-  "math.advancedHint": "支援未知數、以分號分隔的方程組、d/dx 求導、sum(...,n=1..10) 求和、log10 與 exp。",
+  "math.advancedHint": "支援 a–z 小寫變數、手寫函數名、分號方程組、d/dx 求導、sum(...,n=1..10) 求和、log10 與 exp。",
   "math.examples": "範例",
   "math.recognizeSelection": "辨識所選數學公式",
   "shape.arrow": "箭頭",

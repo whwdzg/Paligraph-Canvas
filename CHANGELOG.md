@@ -2,6 +2,22 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.11.0] — 2026-11-21
+
+### Letter-aware math recognition
+
+- Added all lower-case Latin letters `a–z` to the handwriting templates, plus hand-authored stroke skeletons that match how letters are actually drawn.
+- Added row-level context resolution using baseline, letter height, closed-loop holes and stroke topology to disambiguate `a/n`, `y/p/r`, `n/h`, `z/2` and similar pairs.
+- Added joined-stroke grouping for dots (`i/j`) and T-junctions (`y`, `t`, `f`) so multi-stroke letters are recognised as one glyph.
+- Added repair for handwritten function names such as `log`, `ln`, `sin`, `cos`, `tan` and `exp` when letter templates read a digit lookalike.
+- Tightened `+` detection so it no longer steals `t`/`f`-like letters; multiplication-cross detection now requires a true crossing instead of any two diagonals.
+- Added `qa:math-letters`; verified `x+y` and `a+n` end-to-end.
+
+### Internal
+
+- 64 unit tests remain green.
+- Bumped package/app version to 1.11.0.
+
 ## [1.10.2] — 2026-11-20
 
 ### Fixed

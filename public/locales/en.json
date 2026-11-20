@@ -369,7 +369,7 @@
   "backup.chip": "Back up · {count}",
   "backup.hint": "Browsers can clear local data. Export an editable .paligraph backup regularly.",
   "backup.reminder": "This note has {count} ink strokes. Browsers can clear local data, so export an editable file regularly.",
-  "math.advancedHint": "Variables, systems with ;, d/dx derivatives, sum(...,n=1..10), log10 and exp are supported.",
+  "math.advancedHint": "Supports a–z variables, function names, systems with ;, d/dx, sum(...), log10 and exp.",
   "math.examples": "Examples",
   "math.recognizeSelection": "Recognize selected math",
   "shape.arrow": "Arrow",
