@@ -170,6 +170,8 @@ interface SelectionPreviewLive {
 interface ShapeCandidate {
   fit: ShapeFit;
   interaction: DrawInteraction;
+  /** Point where the hold was recognised; small moves around it keep the snap. */
+  anchor: InkPoint;
 }
 
 interface ShapeHint {
@@ -365,6 +367,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
     onImagePreview,
   });
   const [gesturing, setGesturing] = useState(false);
+  const SHAPE_HOLD_SLOP = 12;
   const [shapeHint, setShapeHint] = useState<ShapeHint | null>(null);
   const shapeCandidateRef = useRef<ShapeCandidate | null>(null);
   const shapeTimerRef = useRef<number | null>(null);
@@ -1145,7 +1148,11 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
         if (drawRef.current !== interaction || shapeCandidateRef.current) return;
         const fit = recognizeShape(interaction.points);
         if (!fit || fit.confidence < 0.58) return;
-        shapeCandidateRef.current = { fit, interaction };
+        shapeCandidateRef.current = {
+          fit,
+          interaction,
+          anchor: interaction.points[interaction.points.length - 1],
+        };
         const preview = previewShapeStroke(strokeFromInteraction(interaction, interaction.points), fit);
         livePreviewRef.current = { kind: 'draft', stroke: preview };
         const bounds = pointsBounds(fit.points);
@@ -1193,7 +1200,17 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
   const appendDrawPoint = useCallback(
     (interaction: DrawInteraction, screenX: number, screenY: number, pressure: number) => {
       if (interaction.points.length > 6000) return;
-      if (shapeCandidateRef.current) cancelShapeRecognition();
+      const candidate = shapeCandidateRef.current;
+      if (candidate) {
+        const next = worldPoint(screenX, screenY);
+        const movedOnScreen = distance(next.x, next.y, candidate.anchor.x, candidate.anchor.y) * viewRef.current.scale;
+        if (movedOnScreen <= SHAPE_HOLD_SLOP) {
+          // A held shape stays armed through tiny hand jitter. Do not append
+          // the point or restart the recognition timer.
+          return;
+        }
+        cancelShapeRecognition();
+      }
       const point = worldPoint(screenX, screenY);
       point.p = pressure;
       const last = interaction.points[interaction.points.length - 1];

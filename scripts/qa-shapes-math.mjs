@@ -83,6 +83,11 @@ for (let i = 1; i < rect.length; i += 1) {
 await page.waitForTimeout(820);
 const shapeHint = await page.locator('.shape-hint').count();
 const shapeText = shapeHint ? await page.locator('.shape-hint').textContent() : '';
+// Tiny hand jitter after the hold must not disarm the snap.
+await page.mouse.move(box.x + 307, box.y + 169, { steps: 2 });
+await page.waitForTimeout(180);
+const shapeHintAfterJitter = await page.locator('.shape-hint').count();
+const shapeTextAfterJitter = shapeHintAfterJitter ? await page.locator('.shape-hint').textContent() : '';
 await page.screenshot({ path: 'screenshots/shape-hold.png' });
 await page.mouse.up();
 await page.waitForTimeout(1100);
@@ -157,8 +162,8 @@ if (modalVisible) {
   const columnAnswer = await page.locator('.math-answer > strong').textContent().catch(() => '');
   const columnWorking = await page.locator('.vertical-work').count();
   await page.screenshot({ path: 'screenshots/math-dialog-column.png' });
-  console.log(JSON.stringify({ shapeHint, shapeText: shapeText?.trim(), strokesAfterShape, selectionToolbar, modalVisible, recognized, equationAnswer, systemAnswer, derivativeAnswer, sumAnswer, columnAnswer, columnWorking, errors }, null, 2));
+  console.log(JSON.stringify({ shapeHint, shapeText: shapeText?.trim(), shapeHintAfterJitter, shapeTextAfterJitter: shapeTextAfterJitter?.trim(), strokesAfterShape, selectionToolbar, modalVisible, recognized, equationAnswer, systemAnswer, derivativeAnswer, sumAnswer, columnAnswer, columnWorking, errors }, null, 2));
 } else {
-  console.log(JSON.stringify({ shapeHint, shapeText: shapeText?.trim(), strokesAfterShape, selectionToolbar, modalVisible, errors }, null, 2));
+  console.log(JSON.stringify({ shapeHint, shapeText: shapeText?.trim(), shapeHintAfterJitter, shapeTextAfterJitter: shapeTextAfterJitter?.trim(), strokesAfterShape, selectionToolbar, modalVisible, errors }, null, 2));
 }
 await browser.close();

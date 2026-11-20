@@ -2,6 +2,13 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.11.1] — 2026-11-21
+
+### Fixed
+
+- After the 620 ms shape hold arms a candidate, small hand jitter (up to 12 screen pixels) no longer cancels the snap or hides the shape hint. Releasing the pen still commits the recognised shape; moving farther than the slop deliberately returns to freehand.
+- Added a QA step that moves 5–6 px after the hold and verifies the hint stays armed and the rectangle is committed.
+
 ## [1.11.0] — 2026-11-21
 
 ### Letter-aware math recognition
