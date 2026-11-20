@@ -2,6 +2,14 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.10.1] — 2026-11-20
+
+### Fixed
+
+- Settings content now fills the dialog correctly and scrolls on small/short viewports instead of being clipped by the modal body.
+- Added explicit `min-height: 0` flex/grid constraints, stable scrollbar gutter, contained overscroll and momentum scrolling on touch devices.
+- All settings tabs (appearance, canvas, language, data, about) are reachable and scroll independently on a 390 × 640 viewport.
+
 ## [1.10.0] — 2026-11-20
 
 ### Richer ink textures
