@@ -47,6 +47,21 @@ describe('stroke operations', () => {
     expect(stroke?.color).toBe('#123456');
   });
 
+  it('preserves live geometry and seed for a seamless commit', () => {
+    const points = Array.from({ length: 20 }, (_, index) => point(index * 4, Math.sin(index) * 2, 0.7));
+    const stroke = finishStroke(points, {
+      tool: 'pen',
+      variant: 'pencil',
+      color: '#123456',
+      size: 4,
+      opacity: 1,
+      seed: 98765,
+      preservePoints: true,
+    });
+    expect(stroke?.points).toEqual(points);
+    expect(stroke?.seed).toBe(98765);
+  });
+
   it('smoothes noisy pressure while keeping the endpoints', () => {
     const raw = [point(0, 0, 0.2), point(10, 0, 0.95), point(20, 0, 0.1), point(30, 0, 0.6)];
     const smooth = smoothStrokePressure(raw);

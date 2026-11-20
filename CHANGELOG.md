@@ -2,6 +2,14 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.10.2] — 2026-11-20
+
+### Fixed
+
+- Freehand pen/pencil/crayon/brush strokes now commit the exact points and texture seed used by the live preview. Releasing the pointer no longer runs an RDP/pressure re-smoothing pass, so the stroke does not twitch or change shape/texture on lift.
+- Straight highlighter and shape-snap paths keep the same preview geometry.
+- Added a regression test for preserving live points and seed.
+
 ## [1.10.1] — 2026-11-20
 
 ### Fixed

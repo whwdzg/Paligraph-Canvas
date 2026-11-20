@@ -101,6 +101,7 @@ interface DirtyFlags {
 interface DrawInteraction {
   pointerId: number;
   points: InkPoint[];
+  seed: number;
   variant: PenVariant | 'highlighter';
   tool: 'pen' | 'highlighter';
   color: string;
@@ -273,7 +274,7 @@ function strokeFromInteraction(interaction: DrawInteraction, points: InkPoint[])
     size: interaction.size,
     opacity: interaction.opacity,
     points: finalPoints,
-    seed: 1,
+    seed: interaction.seed,
     mode: interaction.mode,
     createdAt: Date.now(),
   };
@@ -1173,6 +1174,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       const interaction: DrawInteraction = {
         pointerId,
         points: [point],
+        seed: createSeed(),
         tool: isHighlighter ? 'highlighter' : 'pen',
         variant,
         color: isHighlighter ? settingsNow.highlighterColor : settingsNow.penColor,
@@ -1231,6 +1233,8 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
             size: interaction.size,
             opacity: interaction.opacity,
             mode: interaction.mode,
+            seed: interaction.seed,
+            preservePoints: true,
           });
     if (!finished) {
       markDirty({ live: true });

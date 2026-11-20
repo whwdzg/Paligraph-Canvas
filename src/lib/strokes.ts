@@ -284,13 +284,17 @@ export function finishStroke(
     size: number;
     opacity: number;
     mode?: 'free' | 'straight';
+    /** Keep the sampled geometry from the live preview (no RDP/pressure pass). */
+    preservePoints?: boolean;
+    /** Reuse the seed already used by the live preview so texture doesn't jump. */
+    seed?: number;
   },
 ): Stroke | null {
   if (!points.length) return null;
   let finalPoints = [...points];
   if (options.mode === 'straight' && finalPoints.length >= 2) {
     finalPoints = [finalPoints[0], finalPoints[finalPoints.length - 1]];
-  } else if (finalPoints.length > 2) {
+  } else if (!options.preservePoints && finalPoints.length > 2) {
     finalPoints = finalizeStrokePoints(finalPoints);
     if (options.tool === 'pen') finalPoints = smoothStrokePressure(finalPoints);
   }
@@ -302,7 +306,7 @@ export function finishStroke(
     size: options.size,
     opacity: options.opacity,
     points: finalPoints,
-    seed: createSeed(),
+    seed: options.seed ?? createSeed(),
     mode: options.mode,
     createdAt: Date.now(),
   };
