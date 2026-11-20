@@ -191,6 +191,7 @@ export interface DrawingSurfaceHandle {
   rotateSelection: (degrees: number) => void;
   clearCanvas: () => void;
   insertImages: (images: PreparedImage[]) => void;
+  updateTextImage: (id: string, image: PreparedImage) => void;
   insertShape: (kind: ShapeKind) => void;
   fitToContent: () => void;
   resetView: () => void;
@@ -790,12 +791,42 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
           width,
           height,
           rotation: 0,
+          text: prepared.text,
         };
       });
       if (!added.length) return;
       const nextImages = [...before.images, ...added];
       applyDocument(before.strokes, nextImages, before);
       const selection = makeSelection(before.strokes, [], nextImages, added.map((image) => image.id));
+      setSelection(selection);
+      markDirty({ media: true, overlay: true });
+    },
+    [applyDocument, markDirty, setSelection, snapshot],
+  );
+
+  const updateTextImage = useCallback(
+    (id: string, prepared: PreparedImage) => {
+      const before = snapshot();
+      const original = before.images.find((image) => image.id === id);
+      if (!original) return;
+      const center = {
+        x: original.x + original.width / 2,
+        y: original.y + original.height / 2,
+      };
+      const updated: NoteImage = {
+        ...original,
+        src: prepared.src,
+        name: prepared.name,
+        mime: prepared.mime,
+        x: center.x - prepared.width / 2,
+        y: center.y - prepared.height / 2,
+        width: prepared.width,
+        height: prepared.height,
+        text: prepared.text,
+      };
+      const nextImages = before.images.map((image) => (image.id === id ? updated : image));
+      applyDocument(before.strokes, nextImages, before);
+      const selection = makeSelection(before.strokes, [], nextImages, [id]);
       setSelection(selection);
       markDirty({ media: true, overlay: true });
     },
@@ -855,6 +886,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       rotateSelection,
       clearCanvas,
       insertImages,
+      updateTextImage,
       insertShape,
       fitToContent,
       resetView,
@@ -871,6 +903,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       rotateSelection,
       clearCanvas,
       insertImages,
+      updateTextImage,
       insertShape,
       fitToContent,
       resetView,

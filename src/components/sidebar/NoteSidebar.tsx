@@ -413,12 +413,17 @@ export function NoteSidebar({
         <div className="note-list" role="list">
           {filtered.map((note) => {
             const strokes = note.strokes.filter((stroke) => stroke.tool !== 'eraser').length;
-            const images = note.images?.length ?? 0;
+            const images = note.images?.filter((image) => !image.text).length ?? 0;
+            const textBlocks = note.images?.filter((image) => image.text).length ?? 0;
             const selected = selectedIds.has(note.id);
             const excerpt = note.markdown
               ? plainExcerpt(note.markdown, 90)
-              : strokes || images
-                ? [strokes ? t('note.strokeCount', { count: strokes }) : '', images ? t('note.images', { count: images }) : '']
+              : strokes || images || textBlocks
+                ? [
+                    strokes ? t('note.strokeCount', { count: strokes }) : '',
+                    images ? t('note.images', { count: images }) : '',
+                    textBlocks ? t('note.textBlocks', { count: textBlocks }) : '',
+                  ]
                     .filter(Boolean)
                     .join(' · ')
                 : t('note.empty');

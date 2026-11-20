@@ -11,6 +11,7 @@ import { ToolOptions } from './components/editor/ToolOptions';
 import { BackgroundPanel } from './components/editor/BackgroundPanel';
 import { SelectionToolbar } from './components/editor/SelectionToolbar';
 import { ShapePicker } from './components/editor/ShapePicker';
+import { TextDialog } from './components/editor/TextDialog';
 import { ZoomControls } from './components/editor/ZoomControls';
 import { EmptyCanvasHint } from './components/editor/EmptyCanvasHint';
 import { SourcePanel } from './components/editor/SourcePanel';
@@ -29,6 +30,7 @@ import { useThemeSync } from './hooks/useTheme';
 import { useToasts } from './hooks/useToasts';
 import { useClickOutside } from './hooks/useClickOutside';
 import { prepareImageFile, type PreparedImage } from './lib/media';
+import { DEFAULT_TEXT_STYLE, renderTextImage } from './lib/textImage';
 import { parseEditableNoteJson, type ImportedNote } from './lib/editable';
 import { collectFolderIds, folderPathName } from './lib/folders';
 import type {
@@ -38,6 +40,8 @@ import type {
   Note,
   NoteExportFormat,
   NoteFolder,
+  NoteImage,
+  NoteTextStyle,
   Selection,
   Settings,
   ShapeKind,
@@ -177,6 +181,8 @@ export default function App() {
   const [markdownHtml, setMarkdownHtml] = useState('');
   const [mathStrokes, setMathStrokes] = useState<Stroke[] | null>(null);
   const [previewImage, setPreviewImage] = useState<{ src: string; alt: string } | null>(null);
+  const [textDialog, setTextDialog] = useState<{ image?: NoteImage; initial: NoteTextStyle } | null>(null);
+  const [lastTextStyle, setLastTextStyle] = useState<NoteTextStyle>(DEFAULT_TEXT_STYLE);
   const surfaceRef = useRef<DrawingSurfaceHandle>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const importEditableRef = useRef<(files: File[]) => Promise<void>>(async () => {});
@@ -285,6 +291,7 @@ export default function App() {
     setSidebarOpen(false);
     setMathStrokes(null);
     setPreviewImage(null);
+    setTextDialog(null);
   }, [noteId]);
 
   useEffect(() => {
@@ -443,6 +450,33 @@ export default function App() {
     setSelection(next);
     if (next) setInspector(null);
   }, []);
+
+  const handleInsertText = (): void => {
+    setTextDialog({ initial: { ...lastTextStyle, text: '' } });
+  };
+
+  const handleEditText = (): void => {
+    if (!activeNote || !selection?.imageIds.length) return;
+    const image = activeNote.images?.find((item) => item.id === selection.imageIds[0] && item.text);
+    if (image) setTextDialog({ image, initial: image.text ?? lastTextStyle });
+  };
+
+  const handleSaveText = async (style: NoteTextStyle): Promise<void> => {
+    try {
+      const prepared = renderTextImage(style);
+      if (textDialog?.image) {
+        surfaceRef.current?.updateTextImage(textDialog.image.id, prepared);
+      } else {
+        surfaceRef.current?.insertImages([prepared]);
+      }
+      setLastTextStyle(style);
+      setTextDialog(null);
+      showToast(t('text.saved'), 'success');
+    } catch (error) {
+      console.error('Could not render text block', error);
+      showToast(t('text.error'), 'error');
+    }
+  };
 
   const handleSelectionMath = (): void => {
     if (!activeNote || !selection?.ids.length) return;
@@ -788,6 +822,7 @@ export default function App() {
               onOpenSidebar={() => setSidebarOpen(true)}
               onOpenSource={() => setSourceOpen(true)}
               onImportImages={() => imageInputRef.current?.click()}
+              onInsertText={handleInsertText}
               onToggleBackground={() => {
                 setBackgroundOpen((open) => !open);
                 setInspector(null);
@@ -852,6 +887,13 @@ export default function App() {
                   }}
                   onMath={handleSelectionMath}
                   mathEnabled={settings.mathRecognition}
+                  onEditText={
+                    activeNote &&
+                    selection?.imageIds.length === 1 &&
+                    activeNote.images?.some((image) => image.id === selection.imageIds[0] && image.text)
+                      ? handleEditText
+                      : undefined
+                  }
                 />
               ) : null}
 
@@ -1030,6 +1072,14 @@ export default function App() {
       {previewImage ? (
         <ImagePreviewDialog src={previewImage.src} alt={previewImage.alt} onClose={() => setPreviewImage(null)} />
       ) : null}
+
+      <TextDialog
+        open={Boolean(textDialog)}
+        mode={textDialog?.image ? 'edit' : 'insert'}
+        initial={textDialog?.initial}
+        onSave={handleSaveText}
+        onClose={() => setTextDialog(null)}
+      />
 
       <input
         ref={imageInputRef}

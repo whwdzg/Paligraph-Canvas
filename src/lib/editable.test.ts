@@ -36,6 +36,14 @@ const note: Note = {
       width: 32,
       height: 32,
       rotation: 0.5,
+      text: {
+        text: 'Editable caption',
+        fontId: 'serif',
+        fontSize: 36,
+        color: '#123456',
+        bold: true,
+        italic: false,
+      },
     },
   ],
 };
@@ -52,6 +60,13 @@ describe('editable note format', () => {
       src: note.images?.[0].src,
       width: 32,
       rotation: 0.5,
+      text: {
+        text: 'Editable caption',
+        fontId: 'serif',
+        fontSize: 36,
+        color: '#123456',
+        bold: true,
+      },
     });
     expect(parsed.background.pattern).toBe('grid');
   });

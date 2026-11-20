@@ -68,6 +68,15 @@ export interface NoteFolder {
 export type FolderFilter = 'all' | 'uncategorized' | string;
 export type NoteExportFormat = 'pdf' | 'markdown' | 'png' | 'svg' | 'editable';
 
+export interface NoteTextStyle {
+  text: string;
+  fontId: string;
+  fontSize: number;
+  color: string;
+  bold: boolean;
+  italic: boolean;
+}
+
 export interface NoteImage {
   id: string;
   /** Data URL. Small raster imports are normalised to WebP; SVG is preserved. */
@@ -81,6 +90,8 @@ export interface NoteImage {
   height: number;
   /** Clockwise radians around the image centre. */
   rotation: number;
+  /** Present when this image is a re-editable text block. */
+  text?: NoteTextStyle;
 }
 
 export interface BackgroundSettings {

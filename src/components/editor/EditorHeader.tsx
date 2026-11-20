@@ -13,6 +13,7 @@ import {
   Navigation24Regular,
   Save24Regular,
   Settings24Regular,
+  TextAddT24Regular,
   Warning24Regular,
 } from '@fluentui/react-icons';
 import { useI18n } from '../../i18n/I18nProvider';
@@ -33,6 +34,7 @@ interface EditorHeaderProps {
   onOpenSidebar: () => void;
   onOpenSource: () => void;
   onImportImages: () => void;
+  onInsertText: () => void;
   onToggleBackground: () => void;
   onOpenSettings: () => void;
   onExportPdf: () => void;
@@ -53,6 +55,7 @@ export function EditorHeader({
   onOpenSidebar,
   onOpenSource,
   onImportImages,
+  onInsertText,
   onToggleBackground,
   onOpenSettings,
   onExportPdf,
@@ -130,6 +133,9 @@ export function EditorHeader({
         ) : null}
         <IconButton label={t('image.import')} onClick={onImportImages} tip="bottom">
           <ImageAdd24Regular />
+        </IconButton>
+        <IconButton label={t('text.insert')} onClick={onInsertText} tip="bottom">
+          <TextAddT24Regular />
         </IconButton>
         <IconButton
           ref={backgroundButtonRef}

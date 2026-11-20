@@ -3,7 +3,7 @@
 **灵感，落于笔尖。** A local-first notebook for ink, Markdown and the ideas in between.
 
 [![Deploy to GitHub Pages](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml/badge.svg)](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml)
-![Version](https://img.shields.io/badge/version-1.12.0-2b7fff)
+![Version](https://img.shields.io/badge/version-1.13.0-2b7fff)
 ![License](https://img.shields.io/badge/license-GPL--3.0--or--later-4c1)
 
 Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布、一套接近 Apple Notes 的悬浮工具栏、Fluent Design Sun Valley 的材质，以及可选的液态玻璃（liquid glass）质感。它把笔迹数据和 Markdown 都留在这台设备上，并可以在需要时导出为 PDF 或 Markdown。
@@ -40,6 +40,7 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 - 荧光笔支持自由绘制与**直线**两种模式，颜色、宽度独立设置。
 - **图形纠正**：画完直线、矩形、正方形、正圆、椭圆、三角形、正三角形、菱形、五角星、勾或叉后按住笔尖停留，松手时自动吸附为干净图形。
 - **插入图形**：底部工具栏新增图形库，包含直线、箭头、矩形、正方形、椭圆、正圆、三角形、正三角形、菱形、五角星、五边形、六边形、勾、叉；悬浮面板使用圆角磨砂玻璃，插入后自动选中，可移动、旋转、缩放。
+- **插入文字**：顶栏文字按钮打开文字编辑器，可选择字体、字号、颜色、粗体和斜体；多行文字自动换行，插入后是可移动、旋转、再次编辑的文字块。
 - **手写数学**：用套索选中笔迹后点击浮动工具条的数学按钮；支持未知数、方程组、求导、求和、对数、指数等高级运算，识别结果可修正并实时求解。
 - 橡皮支持**按笔迹擦**（整条笔画）与**像素擦**（只擦除触及区域），也可以一键清空画布。
 - 手写笔适配：Pointer Events 压感、合并事件、手掌防误触、笔杆侧键临时切换为橡皮。
@@ -75,6 +76,16 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 - 勾、箭头和叉使用开放路径；叉绘制为两条独立对角线，不会出现额外的连接线。
 
 ![插入图形面板](docs/shapes.png)
+
+### 插入与编辑文字
+
+- 点击顶栏的 **T+** 文字按钮，输入内容并选择字体、字号、颜色、粗体、斜体。
+- 内置无衬线、衬线、等宽、手写、圆体五种字体栈，包含中英文回退；字号 12–96 px。
+- 多行文本自动换行，插入到画布中心并自动选中，可拖动、旋转、复制和撤销。
+- 选中文字块后点击浮动工具条的**编辑文字**按钮，可修改原文、字体和字号；文字块保留同一个对象 ID，并保持中心位置。
+- 文字内容与样式保存在 `.paligraph` 中，重新导入后仍可再次编辑。
+
+![插入文字与字体设置](docs/text.png)
 
 ### 选择与编辑
 
@@ -151,7 +162,7 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 - Chrome/Edge 检测到可安装时会捕获浏览器安装提示，并在侧栏显示低调的安装引导；也可以从 **设置 → 关于** 随时查看安装状态和步骤。
 - 安装后使用独立窗口与图标启动，IndexedDB 笔记与浏览器版本互通。
 - Service Worker 会预缓存应用外壳、所有按需模块、语言包、图标和 KaTeX 字体；安装后即使断网也能重新打开应用和已有笔记。
-- 使用 `autoUpdate` 策略，新版本发布后下一次打开会更新缓存；首次安装缓存约 2.9 MB。
+- 使用 `autoUpdate` 策略，新版本发布后下一次打开会更新缓存；首次安装缓存约 3.0 MB。
 - 如果浏览器不支持自动安装，设置页会显示对应浏览器的手动安装步骤。
 - **本地文件关联**：安装后的 Chromium PWA（Windows Edge/Chrome）注册 `.paligraph` 文件处理器，可从资源管理器右键 → **打开方式 → Paligraph**，或将其设为默认应用；也支持一次选择多个 `.paligraph` 文件。
 - 文件关联通过 Web App Manifest 的 `file_handlers` 和 `launchQueue` 实现；已安装旧版本时需更新或重新安装一次 PWA，让 Windows 重新注册文件类型。Firefox/Safari 不支持该系统级文件关联。
@@ -338,8 +349,8 @@ $env:GITHUB_ACTIONS='true'; npm run build
 ### 性能策略
 
 - 首屏只加载 React、Canvas UI 与应用状态；Markdown 渲染器、Obsidian 扫描器、jsPDF 都是按需 chunk。
-- 当前构建首屏 JS gzip 约 **133 KB**，CSS gzip 约 **16 KB**，语言包约 **5 KB**；手写数学识别器、Math.js 数学引擎（约 192 KB gzip）、Markdown + KaTeX 渲染器（约 100 KB gzip，KaTeX CSS 约 8 KB gzip）、SVG/PNG 编码与导出模块（jsPDF 约 121 KB gzip）都在需要时才下载。
-- PWA 首次安装的 Workbox 预缓存约 **2.9 MB**，包含所有按需模块、字体与语言包；之后由 `autoUpdate` 在后台更新。
+- 当前构建首屏 JS gzip 约 **135 KB**，CSS gzip 约 **16 KB**，语言包约 **5 KB**；手写数学识别器、Math.js 数学引擎（约 192 KB gzip）、Markdown + KaTeX 渲染器（约 100 KB gzip，KaTeX CSS 约 8 KB gzip）、SVG/PNG 编码与导出模块（jsPDF 约 121 KB gzip）都在需要时才下载。
+- PWA 首次安装的 Workbox 预缓存约 **3.0 MB**，包含所有按需模块、字体与语言包；之后由 `autoUpdate` 在后台更新。
 - 画布图片使用解码缓存（最多 24 张），离屏/缩略图导出按需解码；插入时大图会先缩小，避免把原始相机照片长期留在内存。
 - 所有 Canvas 层按 `devicePixelRatio` 渲染，但根据视口面积与设备内存限制像素预算；大屏不会直接使用 2× 全屏位图，避免四层画布把内存放大到不可控。
 - 只绘制视口内的笔画；输入点会做最小距离过滤、结束时 RDP 简化，避免存储冗余点。
@@ -416,6 +427,7 @@ npm run qa:features     # 荧光笔直线、橡皮、复制粘贴、设置 JSON�
 npm run qa:shapes-math  # 选择识别、图形吸附、高级数学与竖式
 npm run qa:math-letters # 手写字母、变量与上下文识别
 npm run qa:shapes-library # 图形库插入与坐标轴背景
+npm run qa:text           # 文字插入、字体/字号修改与二次编辑
 npm run qa:previews     # Markdown / Obsidian 内容预览图
 npm run qa:storage      # 设置中的存储占用读数和明细
 npm run qa:folders      # 文件夹、多选移动/删除、笔记菜单导出

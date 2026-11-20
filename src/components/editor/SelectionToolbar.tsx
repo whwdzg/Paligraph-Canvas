@@ -4,6 +4,7 @@ import {
   Delete24Regular,
   Dismiss24Regular,
   DocumentCopy24Regular,
+  Edit24Regular,
   MathFormula24Regular,
 } from '@fluentui/react-icons';
 import { useI18n } from '../../i18n/I18nProvider';
@@ -18,6 +19,7 @@ interface SelectionToolbarProps {
   onDeselect: () => void;
   onMath: () => void;
   mathEnabled: boolean;
+  onEditText?: () => void;
 }
 
 export function SelectionToolbar({
@@ -29,6 +31,7 @@ export function SelectionToolbar({
   onDeselect,
   onMath,
   mathEnabled,
+  onEditText,
 }: SelectionToolbarProps) {
   const { t } = useI18n();
   return (
@@ -36,6 +39,17 @@ export function SelectionToolbar({
       <span className="selection-count">{t('selection.count', { count: selection.ids.length + selection.imageIds.length })}</span>
       <span className="selection-hint">{t('selection.dragHint')}</span>
       <span className="dock-divider" aria-hidden="true" />
+      {onEditText ? (
+        <button
+          type="button"
+          className="selection-action"
+          onClick={onEditText}
+          aria-label={t('text.edit')}
+          data-tooltip={t('text.edit')}
+        >
+          <Edit24Regular />
+        </button>
+      ) : null}
       {mathEnabled && selection.ids.length ? (
         <button
           type="button"

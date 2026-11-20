@@ -795,6 +795,152 @@
   height: 13px;
 }
 
+/* -------------------------------------------------------------------- text */
+.text-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.text-editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.text-input {
+  width: 100%;
+  min-height: 116px;
+  resize: vertical;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-strong);
+  outline: 0;
+  background: var(--surface-1);
+  color: var(--text);
+  font-family: var(--font-text);
+  font-size: 13px;
+  line-height: 1.55;
+  transition: border-color 140ms var(--ease-fluent), box-shadow 140ms var(--ease-fluent);
+}
+
+.text-input:focus {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.text-options-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.text-font-field {
+  flex: 1;
+}
+
+.text-font-select {
+  height: 36px;
+  padding: 0 9px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  outline: 0;
+  background: var(--surface-1);
+  color: var(--text);
+  font-family: var(--font-text);
+  font-size: 12px;
+}
+
+.text-color-field input[type="color"] {
+  width: 52px;
+  height: 36px;
+  padding: 3px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  cursor: pointer;
+}
+
+.text-size-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.text-size-row .text-editor-field {
+  flex: 1;
+}
+
+.text-size-value {
+  min-width: 48px;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-align: right;
+}
+
+.text-style-buttons {
+  display: flex;
+  gap: 3px;
+}
+
+.text-style-button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text-2);
+}
+
+.text-style-button svg {
+  width: 17px;
+  height: 17px;
+}
+
+.text-style-button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.text-style-button.is-active {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.text-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.text-preview {
+  min-height: 100px;
+  max-height: 190px;
+  overflow: auto;
+  padding: 12px;
+  border-radius: 11px;
+  border: 1px dashed var(--border-strong);
+  background:
+    linear-gradient(45deg, color-mix(in srgb, var(--text-3) 4%, transparent) 25%, transparent 25% 75%, color-mix(in srgb, var(--text-3) 4%, transparent) 75%),
+    var(--surface-1);
+  background-size: 16px 16px;
+  line-height: 1.32;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.text-dialog-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  width: 100%;
+}
+
 .pwa-file-assoc {
   margin-top: 10px;
   color: var(--text-3);

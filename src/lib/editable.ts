@@ -1,6 +1,7 @@
 import { clamp } from './geometry';
 import { createId } from './strokes';
-import type { BackgroundSettings, InkPoint, Note, NoteImage, ShapeKind, Stroke } from './types';
+import { isTextFontId } from './textImage';
+import type { BackgroundSettings, InkPoint, Note, NoteImage, NoteTextStyle, ShapeKind, Stroke } from './types';
 
 /**
  * Paligraph's lossless, editable note file.
@@ -77,6 +78,19 @@ function normalizeStroke(value: unknown): Stroke | null {
   };
 }
 
+function normalizeTextStyle(value: unknown): NoteTextStyle | undefined {
+  const raw = record(value);
+  if (typeof raw.text !== 'string' || !raw.text.trim()) return undefined;
+  return {
+    text: raw.text.slice(0, 2000),
+    fontId: typeof raw.fontId === 'string' && isTextFontId(raw.fontId) ? raw.fontId : 'sans',
+    fontSize: Math.round(clamp(finite(raw.fontSize, 28), 10, 120)),
+    color: typeof raw.color === 'string' && /^#[0-9a-f]{6}$/i.test(raw.color) ? raw.color.toLowerCase() : '#1f2937',
+    bold: Boolean(raw.bold),
+    italic: Boolean(raw.italic),
+  };
+}
+
 function normalizeImage(value: unknown): NoteImage | null {
   const raw = record(value);
   if (typeof raw.src !== 'string' || !raw.src.startsWith('data:image/')) return null;
@@ -92,6 +106,7 @@ function normalizeImage(value: unknown): NoteImage | null {
     width,
     height,
     rotation: finite(raw.rotation),
+    text: normalizeTextStyle(raw.text),
   };
 }
 

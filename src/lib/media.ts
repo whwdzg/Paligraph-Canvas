@@ -1,5 +1,5 @@
 import { rotatePoint } from './geometry';
-import type { Bounds, InkPoint, NoteImage } from './types';
+import type { Bounds, InkPoint, NoteImage, NoteTextStyle } from './types';
 
 /**
  * Canvas media helpers. Images are stored as data URLs so a note remains a
@@ -142,6 +142,8 @@ export interface PreparedImage {
   mime: string;
   width: number;
   height: number;
+  /** Present for generated text blocks, so they remain re-editable. */
+  text?: NoteTextStyle;
 }
 
 const MAX_SOURCE_BYTES = 18 * 1024 * 1024;

@@ -2,6 +2,18 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.13.0] — 2026-11-21
+
+### Insertable, re-editable text
+
+- Added a header **Insert text** action and a text editor dialog with live preview.
+- Supports five font families (sans, serif, mono, handwriting, rounded), sizes 12–96, colour, bold and italic.
+- Multi-line text wraps at a readable width and is rendered to a high-DPI PNG block while retaining its text/style metadata.
+- Text blocks are selected, moved, rotated, duplicated and deleted like canvas images; the selection toolbar exposes **Edit text** to reopen the same block with its original content and style.
+- Editing preserves the block id, rotation and centre position; changing font/size recalculates its bounds.
+- Text metadata is stored in `.paligraph` imports/exports and note cards now show a text-block count instead of treating text as an image.
+- Added `qa:text`, covering insertion, font/size changes and second editing.
+
 ## [1.12.0] — 2026-11-21
 
 ### PWA file association
