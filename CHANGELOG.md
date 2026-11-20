@@ -2,6 +2,14 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.9.1] — 2026-11-20
+
+### Fixed
+
+- Pen, brush, pencil and crayon start/end caps were drawn around the offset ribbon edge instead of the actual input endpoint, shifting the first/last few pixels sideways. Caps are now true semicircles centred on the endpoint.
+- Grain/bristle passes no longer begin or end outside the tip cap, removing detached-looking specks at stroke ends.
+- The first and last cross-section is kept symmetrical so tapered tips close cleanly at every zoom level and DPR.
+
 ## [1.9.0] — 2026-11-20
 
 ### Shapes and shape library

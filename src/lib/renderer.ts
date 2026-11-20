@@ -344,6 +344,7 @@ function ribbonPath(
   const left: InkPoint[] = [];
   const right: InkPoint[] = [];
   const widths: number[] = [];
+  const angles: number[] = [];
   const count = points.length;
   const taperSpan = Math.min(5, Math.max(1, count - 1));
   for (let i = 0; i < count; i += 1) {
@@ -362,7 +363,10 @@ function ribbonPath(
       : 1;
     const width = Math.max(0.7, baseWidth * (0.38 + clamp(points[i].p, 0, 1) * 0.92) * taperFactor);
     widths.push(width);
-    const jitter = rough ? seeded(seed, i, 1) * rough : 0;
+    angles.push(Math.atan2(ny, nx));
+    // Keep the very first/last cross-section symmetrical so the round cap can
+    // be a true semicircle centred exactly on the input point.
+    const jitter = rough && i > 0 && i < count - 1 ? seeded(seed, i, 1) * rough : 0;
     left.push({ ...points[i], x: points[i].x + nx * (width * 0.5 + jitter), y: points[i].y + ny * (width * 0.5 + jitter) });
     right.push({ ...points[i], x: points[i].x - nx * (width * 0.5 - jitter), y: points[i].y - ny * (width * 0.5 - jitter) });
   }
@@ -378,19 +382,23 @@ function ribbonPath(
   }
   const lastLeft = left[left.length - 1];
   ctx.lineTo(lastLeft.x, lastLeft.y);
-  const lastRight = right[right.length - 1];
-  const capWidth = widths[widths.length - 1];
-  // Rounded cap on the far end.
-  ctx.arc(lastLeft.x, lastLeft.y, capWidth / 2, 0, Math.PI, false);
-  ctx.lineTo(lastRight.x, lastRight.y);
+  const endPoint = points[count - 1];
+  const endAngle = angles[angles.length - 1];
+  // The old implementation centred the cap on the offset edge, which shifted
+  // the last few pixels sideways. A semicircle around the actual endpoint
+  // joins the two ribbon edges exactly.
+  ctx.arc(endPoint.x, endPoint.y, widths[widths.length - 1] / 2, endAngle, endAngle + Math.PI, true);
   for (let i = right.length - 2; i > 0; i -= 1) {
     const midX = (right[i].x + right[i + 1].x) / 2;
     const midY = (right[i].y + right[i + 1].y) / 2;
     ctx.quadraticCurveTo(right[i].x, right[i].y, midX, midY);
   }
   ctx.lineTo(right[0].x, right[0].y);
-  const firstWidth = widths[0];
-  ctx.arc(right[0].x, right[0].y, firstWidth / 2, Math.PI, Math.PI * 2, false);
+  const startPoint = points[0];
+  const startAngle = angles[0];
+  // From the right edge around the tail (not through the stroke body) to the
+  // left edge; this is the mirror of the end cap above.
+  ctx.arc(startPoint.x, startPoint.y, widths[0] / 2, startAngle + Math.PI, startAngle, true);
   ctx.closePath();
   ctx.fill();
 }
@@ -421,17 +429,24 @@ function jitterPath(
   amount: number,
   width: number,
 ): void {
+  // Grain lives inside the tip caps. Including the exact endpoints would make
+  // several translucent hairs converge on one pixel and leave a dark speck.
+  const start = points.length > 3 ? 1 : 0;
+  const end = points.length > 3 ? points.length - 1 : points.length;
+  if (end - start < 2) return;
   ctx.beginPath();
-  for (let i = 0; i < points.length; i += 1) {
+  for (let i = start; i < end; i += 1) {
     const prev = points[Math.max(0, i - 1)];
     const next = points[Math.min(points.length - 1, i + 1)];
     const length = Math.hypot(next.x - prev.x, next.y - prev.y) || 1;
     const nx = -(next.y - prev.y) / length;
     const ny = (next.x - prev.x) / length;
-    const offset = seeded(seed, i, 2) * amount;
+    const edge = Math.min(i, points.length - 1 - i);
+    const edgeFactor = Math.min(1, edge / 2);
+    const offset = seeded(seed, i, 2) * amount * edgeFactor;
     const x = points[i].x + nx * offset;
     const y = points[i].y + ny * offset;
-    if (i === 0) ctx.moveTo(x, y);
+    if (i === start) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
   }
   ctx.lineWidth = width;

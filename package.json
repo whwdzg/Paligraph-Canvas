@@ -1,7 +1,7 @@
 {
   "name": "paligraph-canvas",
   "private": true,
-  "version": "1.9.0",
+  "version": "1.9.1",
   "type": "module",
   "description": "Paligraph Canvas — a Fluent Design web notebook for thinking in ink and markdown.",
   "homepage": "https://whwdzg.github.io/Paligraph-Canvas/",
