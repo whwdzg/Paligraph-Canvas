@@ -133,12 +133,19 @@ interface PanInteraction {
 
 interface SelectionInteraction {
   pointerId: number;
-  mode: 'move' | 'rotate';
+  mode: 'move' | 'rotate' | 'resize';
   startWorld: InkPoint;
   center: { x: number; y: number };
   startAngle: number;
   startSelection: Selection;
   preview: SelectionPreview;
+  /** Image resize state. */
+  resizeCorner?: number;
+  resizeAnchor?: InkPoint;
+  resizeStartCorner?: InkPoint;
+  resizeStartImages?: NoteImage[];
+  resizeBefore?: DocumentSnapshot;
+  resizeScale?: number;
 }
 
 interface GestureCandidate {
@@ -799,6 +806,9 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       applyDocument(before.strokes, nextImages, before);
       const selection = makeSelection(before.strokes, [], nextImages, added.map((image) => image.id));
       setSelection(selection);
+      // Image handles are immediately actionable; avoid leaving the pen active
+      // so the first drag resizes instead of drawing a new stroke.
+      callbacksRef.current.onToolChange('lasso');
       markDirty({ media: true, overlay: true });
     },
     [applyDocument, markDirty, setSelection, snapshot],
@@ -1154,6 +1164,12 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
   }, [clearShapeTimer, markDirty]);
 
   const abortTransientInteraction = useCallback(() => {
+    const interruptedSelection = selectionInteractionRef.current;
+    if (interruptedSelection?.mode === 'resize' && interruptedSelection.resizeBefore) {
+      imagesRef.current = interruptedSelection.resizeBefore.images;
+      selectionRef.current = interruptedSelection.startSelection;
+      callbacksRef.current.onSelectionChange(interruptedSelection.startSelection);
+    }
     drawRef.current = null;
     eraseRef.current = null;
     lassoInteractionRef.current = null;
@@ -1473,10 +1489,10 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
   }, [markDirty]);
 
   const beginSelectionInteraction = useCallback(
-    (pointerId: number, world: InkPoint, mode: 'move' | 'rotate', selection: Selection) => {
+    (pointerId: number, world: InkPoint, mode: 'move' | 'rotate' | 'resize', selection: Selection, corner?: number) => {
       const center = boundsCenter(selection.bounds);
       const startAngle = Math.atan2(world.y - center.y, world.x - center.x);
-      selectionInteractionRef.current = {
+      const interaction: SelectionInteraction = {
         pointerId,
         mode,
         startWorld: world,
@@ -1487,26 +1503,74 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       };
       hiddenRef.current = new Set(selection.ids);
       hiddenImageIdsRef.current = new Set(selection.imageIds);
-      const selected = strokesRef.current.filter((stroke) => selection.ids.includes(stroke.id));
-      const selectedImages = imagesRef.current.filter((image) => selection.imageIds.includes(image.id));
       livePreviewRef.current = null;
       selectionPreviewRef.current = { dx: 0, dy: 0, rotation: selection.rotation };
-      livePreviewRef.current = {
-        kind: 'selection',
-        strokes: selected,
-        images: selectedImages,
-        preview: { dx: 0, dy: 0, rotation: selection.rotation },
-        center,
-      };
+
+      if (mode === 'resize' && typeof corner === 'number') {
+        const points = [
+          { x: selection.bounds.minX, y: selection.bounds.minY, p: 0.5 },
+          { x: selection.bounds.maxX, y: selection.bounds.minY, p: 0.5 },
+          { x: selection.bounds.maxX, y: selection.bounds.maxY, p: 0.5 },
+          { x: selection.bounds.minX, y: selection.bounds.maxY, p: 0.5 },
+        ];
+        interaction.resizeCorner = corner;
+        interaction.resizeStartCorner = points[corner];
+        interaction.resizeAnchor = points[(corner + 2) % 4];
+        interaction.resizeStartImages = imagesRef.current;
+        interaction.resizeBefore = snapshot();
+        interaction.resizeScale = 1;
+        hiddenRef.current = new Set();
+        hiddenImageIdsRef.current = new Set();
+      } else {
+        const selected = strokesRef.current.filter((stroke) => selection.ids.includes(stroke.id));
+        const selectedImages = imagesRef.current.filter((image) => selection.imageIds.includes(image.id));
+        livePreviewRef.current = {
+          kind: 'selection',
+          strokes: selected,
+          images: selectedImages,
+          preview: { dx: 0, dy: 0, rotation: selection.rotation },
+          center,
+        };
+      }
+      selectionInteractionRef.current = interaction;
       markDirty({ media: true, ink: true, live: true, overlay: true });
     },
-    [markDirty],
+    [markDirty, snapshot],
   );
 
   const updateSelectionInteraction = useCallback(
     (pointerId: number, world: InkPoint) => {
       const interaction = selectionInteractionRef.current;
       if (!interaction || interaction.pointerId !== pointerId) return;
+      if (interaction.mode === 'resize') {
+        const anchor = interaction.resizeAnchor;
+        const startCorner = interaction.resizeStartCorner;
+        const startImages = interaction.resizeStartImages;
+        if (!anchor || !startCorner || !startImages) return;
+        const startDistance = Math.max(1, distance(anchor.x, anchor.y, startCorner.x, startCorner.y));
+        const scale = clamp(distance(anchor.x, anchor.y, world.x, world.y) / startDistance, 0.08, 12);
+        const selectedIds = new Set(interaction.startSelection.imageIds);
+        const nextImages = startImages.map((image) => {
+          if (!selectedIds.has(image.id)) return image;
+          return {
+            ...image,
+            x: anchor.x + (image.x - anchor.x) * scale,
+            y: anchor.y + (image.y - anchor.y) * scale,
+            width: image.width * scale,
+            height: image.height * scale,
+            text: image.text
+              ? { ...image.text, fontSize: clamp(image.text.fontSize * scale, 10, 120) }
+              : undefined,
+          };
+        });
+        interaction.resizeScale = scale;
+        imagesRef.current = nextImages;
+        const nextSelection = makeSelection(strokesRef.current, interaction.startSelection.ids, nextImages, interaction.startSelection.imageIds);
+        selectionRef.current = nextSelection;
+        callbacksRef.current.onSelectionChange(nextSelection);
+        markDirty({ media: true, overlay: true });
+        return;
+      }
       if (interaction.mode === 'move') {
         const preview = {
           dx: world.x - interaction.startWorld.x,
@@ -1549,6 +1613,31 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
   const finishSelectionInteraction = useCallback(() => {
     const interaction = selectionInteractionRef.current;
     if (!interaction) return;
+    if (interaction.mode === 'resize') {
+      const before = interaction.resizeBefore;
+      const scale = interaction.resizeScale ?? 1;
+      selectionInteractionRef.current = null;
+      selectionPreviewRef.current = null;
+      livePreviewRef.current = null;
+      hiddenRef.current = new Set();
+      hiddenImageIdsRef.current = new Set();
+      if (!before || Math.abs(scale - 1) < 0.01) {
+        if (before) imagesRef.current = before.images;
+        const selection = makeSelection(strokesRef.current, interaction.startSelection.ids, imagesRef.current, interaction.startSelection.imageIds);
+        selectionRef.current = selection;
+        callbacksRef.current.onSelectionChange(selection);
+        markDirty({ media: true, overlay: true });
+        return;
+      }
+      const nextImages = imagesRef.current;
+      const nextStrokes = strokesRef.current;
+      applyDocument(nextStrokes, nextImages, before);
+      const selection = makeSelection(nextStrokes, interaction.startSelection.ids, nextImages, interaction.startSelection.imageIds);
+      selectionRef.current = selection;
+      callbacksRef.current.onSelectionChange(selection);
+      markDirty({ media: true, ink: true, overlay: true });
+      return;
+    }
     const { preview } = interaction;
     if (Math.abs(preview.dx) < 0.01 && Math.abs(preview.dy) < 0.01 && Math.abs(preview.rotation) < 0.0005) {
       hiddenRef.current = new Set();
@@ -1713,6 +1802,14 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
             event.preventDefault();
             beginSelectionInteraction(event.pointerId, world, 'rotate', selection);
             return;
+          }
+          if (!selection.ids.length && selection.imageIds.length) {
+            const corner = geometry.corners.findIndex((point) => distance(screen.x, screen.y, point.x, point.y) <= 16);
+            if (corner >= 0) {
+              event.preventDefault();
+              beginSelectionInteraction(event.pointerId, world, 'resize', selection, corner);
+              return;
+            }
           }
           if (pointInRotatedBounds(world, selection, 8 / viewRef.current.scale)) {
             event.preventDefault();

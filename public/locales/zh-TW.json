@@ -122,7 +122,7 @@
   "tools.cleared": "畫布已清空",
   "selection.label": "選取範圍",
   "selection.count": "已選 {count} 項",
-  "selection.dragHint": "拖曳移動 · 控點旋轉",
+  "selection.dragHint": "拖曳移動 · 角點縮放 · 控點旋轉",
   "selection.copy": "複製",
   "selection.duplicate": "再製",
   "selection.rotate": "旋轉 90°",

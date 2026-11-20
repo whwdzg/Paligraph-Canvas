@@ -3,7 +3,7 @@
 **灵感，落于笔尖。** A local-first notebook for ink, Markdown and the ideas in between.
 
 [![Deploy to GitHub Pages](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml/badge.svg)](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml)
-![Version](https://img.shields.io/badge/version-1.13.0-2b7fff)
+![Version](https://img.shields.io/badge/version-1.13.1-2b7fff)
 ![License](https://img.shields.io/badge/license-GPL--3.0--or--later-4c1)
 
 Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布、一套接近 Apple Notes 的悬浮工具栏、Fluent Design Sun Valley 的材质，以及可选的液态玻璃（liquid glass）质感。它把笔迹数据和 Markdown 都留在这台设备上，并可以在需要时导出为 PDF 或 Markdown。
@@ -91,6 +91,7 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 
 - 套索圈选笔迹和画布图片，浮动工具条显示已选项目数量。
 - 直接点击图片即可选中；拖动选区移动；拖动上方圆形手柄旋转；支持按钮旋转 90°。
+- 选中图片后拖动四角控制点可**等比缩放**，对角保持固定，支持撤销/重做。
 - 复制、再制、删除、取消选择；`Ctrl/⌘ + C / V` 使用会话剪贴板，跨笔记也能粘贴图片。
 - 撤销 / 重做覆盖绘制、擦除、图片插入、移动、旋转、复制粘贴与清空画布。
 - 对象擦除、像素擦除、撤销历史均为有界操作，不会无限堆积。
@@ -99,7 +100,8 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 
 - 顶栏图片按钮可以向**当前已有笔记**插入 PNG、JPEG、WebP、GIF 或 SVG 图片；一次最多 12 张，每篇最多 40 张。
 - 大图会按长边 2400 px 等比缩小并转为 WebP，SVG 保留矢量；图片以 data URL 随笔记保存在 IndexedDB。
-- 图片位于背景之上、笔迹之下，可以像笔迹一样被套索选中、移动、自由旋转、90° 旋转、复制、再制或删除。
+- 图片位于背景之上、笔迹之下，可以像笔迹一样被套索选中、移动、拖动角点等比缩放、自由旋转、90° 旋转、复制、再制或删除。
+- 插入图片后自动切换到套索工具并选中新图片，四个角点可以立即拖动缩放。
 - 图片操作与笔迹操作共享同一套撤销历史；删除图片后可以撤销恢复。
 
 ### 笔记库、文件夹与多选
@@ -436,6 +438,7 @@ npm run qa:pwa          # 安装提示、Service Worker、离线启动
 npm run qa:pwa-files    # .paligraph file_handlers 与 launchQueue 打开文件
 npm run qa:backup       # 超过 100 笔的备份提醒与可编辑文件导出
 npm run qa:images       # 插入图片、选中、旋转、复制、删除、撤销
+npm run qa:image-resize # 图片角点等比缩放与撤销
 npm run qa:export       # PNG / SVG / .paligraph 导出与再导入
 node scripts/qa-assets.mjs  # Obsidian 附件导入与图片 lightbox
 node scripts/qa-pdf.mjs     # 中文 PDF 导出

@@ -2,6 +2,16 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.13.1] — 2026-11-21
+
+### Fixed
+
+- Canvas images can now be resized by dragging any of the four selection-corner handles. Scaling is proportional, keeps the opposite corner fixed, works for single or multiple selected images, and is recorded in undo/redo history.
+- Image insertion now switches to the lasso tool automatically so the selected image's handles are immediately draggable instead of starting a pen stroke.
+- Dragging a corner of a text block scales the block and its stored font size keeps re-editing consistent.
+- Updated the selection hint to “drag to move · corners resize · handle rotates”.
+- Added `qa:image-resize`, covering a 192→272 px resize and undo back to 192 px.
+
 ## [1.13.0] — 2026-11-21
 
 ### Insertable, re-editable text

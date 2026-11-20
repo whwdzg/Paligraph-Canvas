@@ -122,7 +122,7 @@
   "tools.cleared": "キャンバスをクリアしました",
   "selection.label": "選択範囲",
   "selection.count": "{count} 個選択",
-  "selection.dragHint": "ドラッグで移動 · ハンドルで回転",
+  "selection.dragHint": "ドラッグで移動 · 角でサイズ変更 · ハンドルで回転",
   "selection.copy": "コピー",
   "selection.duplicate": "複製",
   "selection.rotate": "90° 回転",

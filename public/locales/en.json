@@ -122,7 +122,7 @@
   "tools.cleared": "Canvas cleared",
   "selection.label": "Selection",
   "selection.count": "{count} selected",
-  "selection.dragHint": "Drag to move · handle to rotate",
+  "selection.dragHint": "Drag to move · corners resize · handle rotates",
   "selection.copy": "Copy",
   "selection.duplicate": "Duplicate",
   "selection.rotate": "Rotate 90°",
