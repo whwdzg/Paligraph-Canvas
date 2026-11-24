@@ -3,7 +3,7 @@
 **灵感，落于笔尖。** A local-first notebook for ink, Markdown and the ideas in between.
 
 [![Deploy to GitHub Pages](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml/badge.svg)](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml)
-![Version](https://img.shields.io/badge/version-1.14.0-2b7fff)
+![Version](https://img.shields.io/badge/version-1.15.0-2b7fff)
 ![License](https://img.shields.io/badge/license-GPL--3.0--or--later-4c1)
 
 Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布、一套接近 Apple Notes 的悬浮工具栏、Fluent Design Sun Valley 的材质，以及可选的液态玻璃（liquid glass）质感。它把笔迹数据和 Markdown 都留在这台设备上，并可以在需要时导出为 PDF 或 Markdown。
@@ -164,13 +164,15 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 - Chrome/Edge 检测到可安装时会捕获浏览器安装提示，并在侧栏显示低调的安装引导；也可以从 **设置 → 关于** 随时查看安装状态和步骤。
 - 安装后使用独立窗口与图标启动，IndexedDB 笔记与浏览器版本互通。
 - Service Worker 会预缓存应用外壳、所有按需模块、语言包、图标和 KaTeX 字体；安装后即使断网也能重新打开应用和已有笔记。
-- 使用 `autoUpdate` 策略，新版本发布后下一次打开会更新缓存；首次安装缓存约 3.0 MB。
+- 使用 `autoUpdate` 策略，新版本发布后下一次打开会更新缓存；首次安装缓存约 3.4 MB。
 - 如果浏览器不支持自动安装，设置页会显示对应浏览器的手动安装步骤。
 - **本地文件关联**：安装后的 Chromium PWA（Windows Edge/Chrome）注册 `.paligraph` 文件处理器，可从资源管理器右键 → **打开方式 → Paligraph**，或将其设为默认应用；也支持一次选择多个 `.paligraph` 文件。
 - 文件关联通过 Web App Manifest 的 `file_handlers` 和 `launchQueue` 实现；已安装旧版本时需更新或重新安装一次 PWA，让 Windows 重新注册文件类型。Firefox/Safari 不支持该系统级文件关联。
 - **沉浸式标题栏**：安装后的 Chromium PWA 使用 Window Controls Overlay，应用页眉占据原生标题栏区域，原生最小化/最大化/关闭按钮叠加在右侧。
 - 页眉空白区域可拖动窗口，双击可最大化；按钮、标题输入框和导出菜单均标记为不可拖动，避免误操作。
 - 普通浏览器或不支持 WCO 的环境自动回退到普通独立窗口；已安装旧版 PWA 建议更新或重装一次以启用新的 `display_override`。
+- **PWABuilder / 商店打包**：Manifest 提供 192/512 PNG 图标、独立 512 maskable 图标、宽屏 1280×720 与窄屏 390×844 截图、快捷键图标类型、`handle_links`、`edge_side_panel` 与空的相关原生应用列表。
+- 已按 PWABuilder Manifest 校验规则验证：必填字段全部通过，推荐字段（含截图）全部通过；未启用的分享目标、自定义协议和 Windows 小组件等可选原生能力不会伪造声明。
 
 ![沉浸式 PWA 标题栏](docs/wco.png)
 
@@ -357,7 +359,7 @@ $env:GITHUB_ACTIONS='true'; npm run build
 
 - 首屏只加载 React、Canvas UI 与应用状态；Markdown 渲染器、Obsidian 扫描器、jsPDF 都是按需 chunk。
 - 当前构建首屏 JS gzip 约 **135 KB**，CSS gzip 约 **16 KB**，语言包约 **5 KB**；手写数学识别器、Math.js 数学引擎（约 192 KB gzip）、Markdown + KaTeX 渲染器（约 100 KB gzip，KaTeX CSS 约 8 KB gzip）、SVG/PNG 编码与导出模块（jsPDF 约 121 KB gzip）都在需要时才下载。
-- PWA 首次安装的 Workbox 预缓存约 **3.0 MB**，包含所有按需模块、字体与语言包；之后由 `autoUpdate` 在后台更新。
+- PWA 首次安装的 Workbox 预缓存约 **3.4 MB**，包含所有按需模块、字体与语言包；之后由 `autoUpdate` 在后台更新。
 - 画布图片使用解码缓存（最多 24 张），离屏/缩略图导出按需解码；插入时大图会先缩小，避免把原始相机照片长期留在内存。
 - 所有 Canvas 层按 `devicePixelRatio` 渲染，但根据视口面积与设备内存限制像素预算；大屏不会直接使用 2× 全屏位图，避免四层画布把内存放大到不可控。
 - 只绘制视口内的笔画；输入点会做最小距离过滤、结束时 RDP 简化，避免存储冗余点。
@@ -440,6 +442,7 @@ npm run qa:storage      # 设置中的存储占用读数和明细
 npm run qa:folders      # 文件夹、多选移动/删除、笔记菜单导出
 npm run qa:latex        # Markdown/Obsidian LaTeX 渲染
 npm run qa:pwa          # 安装提示、Service Worker、离线启动
+npm run qa:manifest     # PWABuilder 必填/推荐字段、图标与截图尺寸
 npm run qa:pwa-files    # .paligraph file_handlers 与 launchQueue 打开文件
 npm run qa:wco          # 沉浸式标题栏、窗口拖动区与系统按钮避让
 npm run qa:backup       # 超过 100 笔的备份提醒与可编辑文件导出

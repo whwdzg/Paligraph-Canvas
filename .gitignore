@@ -4,6 +4,8 @@ dist-pages/
 .tmp-pages/
 .vite/
 screenshots/
+!public/screenshots/
+!public/screenshots/*.png
 *.log
 *.tsbuildinfo
 *.tmpdir/

@@ -2,6 +2,16 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.15.0] — 2026-11-24
+
+### PWABuilder-ready manifest
+
+- Added wide (1280×720) and narrow (390×844) store screenshots with `form_factor`, labels and descriptions.
+- Added `handle_links: "auto"`, `edge_side_panel.preferred_width`, an explicit empty `related_applications` list and typed shortcut icons.
+- Added `qa:manifest`, which validates PWABuilder required/recommended fields, PNG icon dimensions, screenshot dimensions and enhancement fields.
+- Verified against the PWABuilder manifest-validation rules: all required and recommended checks pass; unsupported optional native features are not advertised.
+- PWA precache now includes the store screenshots and grows accordingly.
+
 ## [1.14.0] — 2026-11-21
 
 ### Immersive PWA titlebar

@@ -14,6 +14,11 @@
   "lang": "zh-CN",
   "dir": "ltr",
   "prefer_related_applications": false,
+  "related_applications": [],
+  "handle_links": "auto",
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
   "file_handlers": [
     {
       "action": "./",
@@ -45,13 +50,38 @@
       "purpose": "maskable"
     }
   ],
+  "screenshots": [
+    {
+      "src": "screenshots/wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Paligraph Canvas desktop notebook",
+      "description": "An infinite canvas with ink, Markdown, folders and a Fluent Design toolbar."
+    },
+    {
+      "src": "screenshots/narrow.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Paligraph Canvas mobile canvas",
+      "description": "The same local-first notebook and drawing tools on a phone-sized screen."
+    }
+  ],
   "shortcuts": [
     {
       "name": "New note",
       "short_name": "New",
       "description": "Create a blank Paligraph note",
       "url": "./?new=1",
-      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png",
+          "purpose": "any"
+        }
+      ]
     }
   ]
 }
