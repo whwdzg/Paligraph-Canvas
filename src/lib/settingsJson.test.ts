@@ -17,6 +17,8 @@ describe('settings JSON', () => {
     expect(DEFAULT_SETTINGS.palmRejection).toBe(true);
     expect(DEFAULT_SETTINGS.shapeRecognition).toBe(true);
     expect(DEFAULT_SETTINGS.mathRecognition).toBe(true);
+    expect(DEFAULT_SETTINGS.pressureStrength).toBe(1);
+    expect(DEFAULT_SETTINGS.pressureAlgorithm).toBe(true);
   });
 
   it('exports a versioned object without store actions', () => {
@@ -29,11 +31,13 @@ describe('settings JSON', () => {
   it('imports wrappers and bare objects, clamping unsafe values', () => {
     const wrapped = parseSettingsJson(JSON.stringify({
       version: 1,
-      settings: { theme: 'dark', penSize: 99, pressureSensitivity: -4, penColor: 'red; url(x)' },
+      settings: { theme: 'dark', penSize: 99, pressureSensitivity: -4, pressureStrength: 9, pressureAlgorithm: 'yes', penColor: 'red; url(x)' },
     }));
     expect(wrapped.settings.theme).toBe('dark');
     expect(wrapped.settings.penSize).toBe(36);
     expect(wrapped.settings.pressureSensitivity).toBe(0);
+    expect(wrapped.settings.pressureStrength).toBe(2);
+    expect(wrapped.settings.pressureAlgorithm).toBe(true);
     expect(wrapped.settings.penColor).toBe(DEFAULT_SETTINGS.penColor);
 
     const bare = parseSettingsJson(JSON.stringify({ theme: 'light', highlighterMode: 'straight', eraserMode: 'pixel' }));

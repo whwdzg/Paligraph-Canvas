@@ -44,6 +44,12 @@ import {
 } from '../../lib/strokes';
 import { createShapePoints, previewShapeStroke, recognizeShape, snapStrokeToShape, type ShapeFit } from '../../lib/shapes';
 import {
+  createSyntheticPressure,
+  nextSyntheticPressure,
+  shapePressure,
+  type SyntheticPressureState,
+} from '../../lib/pressure';
+import {
   drawNoteImage,
   ensureImage,
   hitTestImage,
@@ -72,6 +78,13 @@ const CARD_Y = -240;
 const CARD_WIDTH = 780;
 const MAX_HISTORY = 80;
 const LONG_PRESS_MS = 260;
+
+/** Pens without a pressure sensor report exactly 0.5 on every sample. */
+function nativePressureOf(event: PointerEvent | ReactPointerEvent): number | null {
+  if (event.pointerType !== 'pen') return null;
+  const pressure = event.pressure;
+  return pressure > 0 && Math.abs(pressure - 0.5) > 0.001 ? pressure : null;
+}
 
 const PASTEL_TOOLS: Record<PenVariant, { opacity: number }> = {
   pen: { opacity: 1 },
@@ -109,6 +122,8 @@ interface DrawInteraction {
   opacity: number;
   mode?: HighlighterMode;
   firstPoint: InkPoint;
+  pressureMode: 'native' | 'synthetic';
+  syntheticPressure: SyntheticPressureState;
 }
 
 interface EraseInteraction {
@@ -1110,8 +1125,8 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
   ]);
 
   const pressureFor = useCallback((event: PointerEvent | ReactPointerEvent): number => {
-    const raw = event.pointerType === 'pen' ? (event.pressure > 0 ? event.pressure : 0.5) : 0.5;
-    return clamp(0.5 + (raw - 0.5) * settingsRef.current.pressureSensitivity, 0, 1);
+    const raw = nativePressureOf(event) ?? 0.5;
+    return shapePressure(raw, settingsRef.current.pressureSensitivity, settingsRef.current.pressureStrength);
   }, []);
 
   const localPoint = useCallback((event: PointerEvent | ReactPointerEvent): { x: number; y: number } => {
@@ -1218,15 +1233,20 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
   );
 
   const beginDraw = useCallback(
-    (pointerId: number, screenX: number, screenY: number, pressure: number) => {
+    (pointerId: number, screenX: number, screenY: number, rawPressure: number | null, timeStamp: number) => {
       const settingsNow = settingsRef.current;
       const currentTool = toolRef.current;
       if (currentTool !== 'pen' && currentTool !== 'highlighter') return;
       cancelShapeRecognition();
       const isHighlighter = currentTool === 'highlighter';
+      const pressureMode = rawPressure === null ? 'synthetic' : 'native';
+      const inferPressure = !isHighlighter && pressureMode === 'synthetic' && settingsNow.pressureAlgorithm;
+      const initialPressure = rawPressure ?? (inferPressure ? 0.58 : 0.5);
       const point = worldPoint(screenX, screenY);
-      point.p = pressure;
+      point.p = isHighlighter ? 0.5 : shapePressure(initialPressure, settingsNow.pressureSensitivity, settingsNow.pressureStrength);
       const variant: PenVariant | 'highlighter' = isHighlighter ? 'highlighter' : settingsNow.penVariant;
+      const synthetic = createSyntheticPressure(timeStamp, screenX, screenY);
+      synthetic.value = initialPressure;
       const interaction: DrawInteraction = {
         pointerId,
         points: [point],
@@ -1238,6 +1258,8 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
         opacity: isHighlighter ? 0.32 : PASTEL_TOOLS[settingsNow.penVariant].opacity,
         mode: isHighlighter ? settingsNow.highlighterMode : 'free',
         firstPoint: point,
+        pressureMode,
+        syntheticPressure: synthetic,
       };
       drawRef.current = interaction;
       livePreviewRef.current = { kind: 'draft', stroke: strokeFromInteraction(interaction, interaction.points) };
@@ -1247,7 +1269,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
   );
 
   const appendDrawPoint = useCallback(
-    (interaction: DrawInteraction, screenX: number, screenY: number, pressure: number) => {
+    (interaction: DrawInteraction, screenX: number, screenY: number, timeStamp: number, rawPressure: number | null) => {
       if (interaction.points.length > 6000) return;
       const candidate = shapeCandidateRef.current;
       if (candidate) {
@@ -1260,8 +1282,20 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
         }
         cancelShapeRecognition();
       }
+      let pressure = rawPressure;
+      if (
+        interaction.tool === 'pen' &&
+        interaction.pressureMode === 'synthetic' &&
+        settingsRef.current.pressureAlgorithm
+      ) {
+        const inferred = nextSyntheticPressure(interaction.syntheticPressure, timeStamp, screenX, screenY);
+        interaction.syntheticPressure = inferred.state;
+        pressure = inferred.pressure;
+      }
       const point = worldPoint(screenX, screenY);
-      point.p = pressure;
+      point.p = interaction.tool === 'highlighter'
+        ? 0.5
+        : shapePressure(pressure ?? 0.5, settingsRef.current.pressureSensitivity, settingsRef.current.pressureStrength);
       const last = interaction.points[interaction.points.length - 1];
       if (interaction.mode === 'straight') {
         interaction.points = [interaction.firstPoint, point];
@@ -1843,7 +1877,7 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
         beginLasso(event.pointerId, screen.x, screen.y);
         return;
       }
-      beginDraw(event.pointerId, screen.x, screen.y, pressureFor(event));
+      beginDraw(event.pointerId, screen.x, screen.y, nativePressureOf(event), event.timeStamp);
     },
     [
       beginDraw,
@@ -1909,7 +1943,13 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
         for (const sampled of events.length ? events : [event.nativeEvent]) {
           const rect = rootRef.current?.getBoundingClientRect();
           if (!rect) continue;
-          appendDrawPoint(draw, sampled.clientX - rect.left, sampled.clientY - rect.top, pressureFor(sampled));
+          appendDrawPoint(
+            draw,
+            sampled.clientX - rect.left,
+            sampled.clientY - rect.top,
+            sampled.timeStamp,
+            nativePressureOf(sampled),
+          );
         }
         return;
       }

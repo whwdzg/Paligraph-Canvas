@@ -159,7 +159,7 @@
   "appearance.palm": "手掌防誤觸",
   "appearance.palmHint": "手寫筆靠近時忽略觸控。",
   "appearance.pressure": "壓感靈敏度",
-  "appearance.pressureHint": "手寫筆壓力影響線條粗細的程度。",
+  "appearance.pressureHint": "壓力訊號的基礎反應程度，與壓感強度共同決定線寬變化。",
   "canvas.title": "紙張預設值",
   "canvas.description": "這些設定用於新筆記，每則筆記仍保有自己的背景。",
   "canvas.noteHint": "使用畫布上方的網格按鈕只修改目前筆記。",
@@ -412,5 +412,9 @@
   "text.fonts.mono": "等寬",
   "text.fonts.hand": "手寫",
   "text.fonts.rounded": "圓體",
-  "note.textBlocks": "{count} 個文字區塊"
+  "note.textBlocks": "{count} 個文字區塊",
+  "appearance.pressureStrength": "壓感強度",
+  "appearance.pressureStrengthHint": "整體增強或減弱壓力對線寬的影響；0% 為均勻線條。",
+  "appearance.pressureAlgorithm": "壓感演算法",
+  "appearance.pressureAlgorithmHint": "對滑鼠、觸控或無壓感手寫筆，根據運筆速度與停頓估算壓感。"
 }

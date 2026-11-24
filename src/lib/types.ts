@@ -182,7 +182,11 @@ export interface Settings {
   palmRejection: boolean;
   shapeRecognition: boolean;
   mathRecognition: boolean;
+  /** Multiplier applied to pressure deviation from neutral. */
+  pressureStrength: number;
   pressureSensitivity: number;
+  /** Infer pressure from speed/pauses when the device reports none. */
+  pressureAlgorithm: boolean;
   penVariant: PenVariant;
   penColor: string;
   penSize: number;

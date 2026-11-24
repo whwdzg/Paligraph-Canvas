@@ -276,6 +276,21 @@ export function SettingsDialog({
                 </SettingRow>
                 <div className="setting-row is-stacked">
                   <div className="setting-copy">
+                    <strong>{t('appearance.pressureStrength')}</strong>
+                    <span>{t('appearance.pressureStrengthHint')}</span>
+                  </div>
+                  <Slider
+                    label={t('appearance.pressureStrength')}
+                    value={settings.pressureStrength}
+                    min={0}
+                    max={2}
+                    step={0.05}
+                    onChange={(pressureStrength) => patch({ pressureStrength })}
+                    display={`${Math.round(settings.pressureStrength * 100)}%`}
+                  />
+                </div>
+                <div className="setting-row is-stacked">
+                  <div className="setting-copy">
                     <strong>{t('appearance.pressure')}</strong>
                     <span>{t('appearance.pressureHint')}</span>
                   </div>
@@ -289,6 +304,13 @@ export function SettingsDialog({
                     display={`${Math.round(settings.pressureSensitivity * 100)}%`}
                   />
                 </div>
+                <SettingRow title={t('appearance.pressureAlgorithm')} description={t('appearance.pressureAlgorithmHint')}>
+                  <Switch
+                    label={t('appearance.pressureAlgorithm')}
+                    checked={settings.pressureAlgorithm}
+                    onChange={(pressureAlgorithm) => patch({ pressureAlgorithm })}
+                  />
+                </SettingRow>
               </div>
             </>
           ) : null}

@@ -159,7 +159,7 @@
   "appearance.palm": "Palm rejection",
   "appearance.palmHint": "Ignore touches while a stylus is nearby.",
   "appearance.pressure": "Pressure sensitivity",
-  "appearance.pressureHint": "How strongly stylus pressure changes line weight.",
+  "appearance.pressureHint": "Base response to pressure; combines with strength.",
   "canvas.title": "Paper defaults",
   "canvas.description": "These settings apply to new notes. Each note keeps its own background.",
   "canvas.noteHint": "Use the grid button above the canvas to change only the current note.",
@@ -412,5 +412,9 @@
   "text.fonts.mono": "Mono",
   "text.fonts.hand": "Handwriting",
   "text.fonts.rounded": "Rounded",
-  "note.textBlocks": "{count} text block"
+  "note.textBlocks": "{count} text block",
+  "appearance.pressureStrength": "Pressure strength",
+  "appearance.pressureStrengthHint": "Overall gain for pressure-driven width. 0% draws uniform lines.",
+  "appearance.pressureAlgorithm": "Pressure algorithm",
+  "appearance.pressureAlgorithmHint": "For mice, touch and pens without pressure, estimate pressure from stroke speed and pauses."
 }

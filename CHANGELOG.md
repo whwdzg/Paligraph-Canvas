@@ -2,6 +2,17 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.16.0] — 2026-11-25
+
+### Pressure strength and inference
+
+- Added **pressure strength** (0–200%) alongside the existing sensitivity control; 0% produces uniform lines.
+- Added a **pressure algorithm** switch, enabled by default.
+- Devices without native pressure (mouse, touch, or pens reporting a constant 0.5) now infer pressure from stroke speed and pauses: slow/dwelling strokes become heavier, fast flicks lighter.
+- Pens with native pressure keep using their real pressure; strength and sensitivity are still applied.
+- Added a unit-tested pure pressure module, plus `qa:pressure` covering controls, persistence, algorithm-off uniformity and slow-vs-fast mouse strokes.
+- Settings JSON export/import and defaults include both new fields; 67 unit tests pass.
+
 ## [1.15.0] — 2026-11-24
 
 ### PWABuilder-ready manifest

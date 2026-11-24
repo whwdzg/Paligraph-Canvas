@@ -159,7 +159,7 @@
   "appearance.palm": "パームリジェクション",
   "appearance.palmHint": "スタイラスが近くにある間はタッチを無視します。",
   "appearance.pressure": "筆圧の感度",
-  "appearance.pressureHint": "スタイラスの筆圧が線の太さに影響する強さ。",
+  "appearance.pressureHint": "筆圧信号の基本応答。強さと組み合わせて線幅を決めます。",
   "canvas.title": "用紙の既定値",
   "canvas.description": "この設定は新しいノートに適用されます。各ノートは独自の背景を保ちます。",
   "canvas.noteHint": "現在のノートだけを変更するには、キャンバス上部のグリッドボタンを使います。",
@@ -412,5 +412,9 @@
   "text.fonts.mono": "等幅",
   "text.fonts.hand": "手書き",
   "text.fonts.rounded": "丸ゴシック",
-  "note.textBlocks": "{count} テキスト"
+  "note.textBlocks": "{count} テキスト",
+  "appearance.pressureStrength": "筆圧の強さ",
+  "appearance.pressureStrengthHint": "筆圧による線幅変化の全体量。0% では均一な線になります。",
+  "appearance.pressureAlgorithm": "筆圧アルゴリズム",
+  "appearance.pressureAlgorithmHint": "マウス、タッチ、筆圧非対応ペンでは、速度と停止時間から筆圧を推定します。"
 }

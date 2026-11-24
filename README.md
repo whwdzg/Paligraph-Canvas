@@ -3,7 +3,7 @@
 **灵感，落于笔尖。** A local-first notebook for ink, Markdown and the ideas in between.
 
 [![Deploy to GitHub Pages](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml/badge.svg)](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml)
-![Version](https://img.shields.io/badge/version-1.15.0-2b7fff)
+![Version](https://img.shields.io/badge/version-1.16.0-2b7fff)
 ![License](https://img.shields.io/badge/license-GPL--3.0--or--later-4c1)
 
 Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布、一套接近 Apple Notes 的悬浮工具栏、Fluent Design Sun Valley 的材质，以及可选的液态玻璃（liquid glass）质感。它把笔迹数据和 Markdown 都留在这台设备上，并可以在需要时导出为 PDF 或 Markdown。
@@ -155,7 +155,11 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 - 每篇笔记独立背景，也可以把当前背景保存为新笔记默认值。
 
 ![数学坐标轴背景](docs/axes.png)
-- 减少动态效果、画布提示、压感灵敏度、防误触、图形纠正与手写数学均可配置。
+- 减少动态效果、画布提示、压感强度、压感灵敏度、无压感设备算法、防误触、图形纠正与手写数学均可配置。
+- **压感强度** 0–200% 控制整体线宽变化；0% 得到均匀线条。**压感灵敏度**控制压力信号的基础响应。
+- **压感算法**默认开启：鼠标、触摸和未报告压力的手写笔会根据运笔速度与停顿估算压感，慢写/停顿更重，快速划动更轻；有原生压感的笔仍使用真实压力。
+
+![压感强度、灵敏度与无压感设备算法](docs/pressure.png)
 - 所有 UI 图标来自 [Microsoft Fluent UI System Icons](https://github.com/microsoft/fluentui-system-icons)（MIT）。
 
 ### PWA 安装
@@ -203,7 +207,7 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 npm install
 npm run dev        # http://localhost:4173
 npm run typecheck  # TypeScript
-npm test           # Vitest · 64 tests
+npm test           # Vitest · 67 tests
 npm run build      # 生产构建到 dist/
 npm run preview    # 预览构建，端口 4173
 ```
@@ -424,7 +428,7 @@ npm test
 npm run build
 ```
 
-当前验证结果：**64 个单元测试通过**，TypeScript 严格模式无错误，生产构建成功。
+当前验证结果：**67 个单元测试通过**，TypeScript 严格模式无错误，生产构建成功。
 
 浏览器 QA 需要先运行 `npm run preview`，并使用本地 Edge/Chrome：
 
@@ -448,6 +452,7 @@ npm run qa:wco          # 沉浸式标题栏、窗口拖动区与系统按钮避
 npm run qa:backup       # 超过 100 笔的备份提醒与可编辑文件导出
 npm run qa:images       # 插入图片、选中、旋转、复制、删除、撤销
 npm run qa:image-resize # 图片角点等比缩放与撤销
+npm run qa:pressure    # 压感强度、压感算法与鼠标慢写/快写差异
 npm run qa:export       # PNG / SVG / .paligraph 导出与再导入
 node scripts/qa-assets.mjs  # Obsidian 附件导入与图片 lightbox
 node scripts/qa-pdf.mjs     # 中文 PDF 导出

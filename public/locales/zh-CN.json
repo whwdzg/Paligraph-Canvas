@@ -159,7 +159,7 @@
   "appearance.palm": "手掌防误触",
   "appearance.palmHint": "手写笔靠近时忽略触摸。",
   "appearance.pressure": "压感灵敏度",
-  "appearance.pressureHint": "手写笔压力影响线条粗细的程度。",
+  "appearance.pressureHint": "压力信号的基础响应程度，与压感强度共同决定线宽变化。",
   "canvas.title": "纸张默认值",
   "canvas.description": "这些设置用于新笔记，每篇笔记仍保留自己的背景。",
   "canvas.noteHint": "使用画布上方的网格按钮只修改当前笔记。",
@@ -412,5 +412,9 @@
   "text.fonts.mono": "等宽",
   "text.fonts.hand": "手写",
   "text.fonts.rounded": "圆体",
-  "note.textBlocks": "{count} 个文字块"
+  "note.textBlocks": "{count} 个文字块",
+  "appearance.pressureStrength": "压感强度",
+  "appearance.pressureStrengthHint": "整体增强或减弱压力对线宽的影响；0% 为均匀线条。",
+  "appearance.pressureAlgorithm": "压感算法",
+  "appearance.pressureAlgorithmHint": "对鼠标、触摸或无压感手写笔，根据运笔速度与停顿估算压感。"
 }
