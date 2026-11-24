@@ -2,6 +2,15 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.17.1] — 2026-11-25
+
+### Fixed
+
+- Right-clicking a note card now opens the same floating menu as its three-dot button, positioned at the pointer and clamped to the viewport.
+- Opening a note context menu closes any open folder menu; opening a folder menu closes a note menu.
+- Multi-select mode does not open the single-note context menu.
+- Added `qa:note-context` comparing the right-click and three-dot menu contents.
+
 ## [1.17.0] — 2026-11-25
 
 ### Brush-aware colour mixing

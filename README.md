@@ -3,7 +3,7 @@
 **灵感，落于笔尖。** A local-first notebook for ink, Markdown and the ideas in between.
 
 [![Deploy to GitHub Pages](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml/badge.svg)](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml)
-![Version](https://img.shields.io/badge/version-1.17.0-2b7fff)
+![Version](https://img.shields.io/badge/version-1.17.1-2b7fff)
 ![License](https://img.shields.io/badge/license-GPL--3.0--or--later-4c1)
 
 Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布、一套接近 Apple Notes 的悬浮工具栏、Fluent Design Sun Valley 的材质，以及可选的液态玻璃（liquid glass）质感。它把笔迹数据和 Markdown 都留在这台设备上，并可以在需要时导出为 PDF 或 Markdown。
@@ -115,6 +115,7 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 - 笔记列表支持**多选模式**：逐篇选择或全选，然后批量移动到文件夹或删除。
 - 新建笔记会落在当前选中的文件夹；也可以在“未分类”和“全部笔记”之间切换。
 - 每篇笔记右侧的三个点可以**移动到文件夹**或直接导出 PDF、Markdown、PNG、SVG、`.paligraph`。
+- **右键笔记卡片**与点击三个点打开完全相同的菜单，菜单会出现在鼠标位置；多选模式下不弹出单篇菜单。
 
 ### Markdown / Obsidian
 
@@ -458,6 +459,7 @@ npm run qa:images       # 插入图片、选中、旋转、复制、删除、撤
 npm run qa:image-resize # 图片角点等比缩放与撤销
 npm run qa:pressure    # 压感强度、压感算法与鼠标慢写/快写差异
 npm run qa:color-mix   # 笔刷混色、重叠颜色与实时/最终像素一致性
+npm run qa:note-context # 笔记列表右键与三点菜单一致性
 npm run qa:export       # PNG / SVG / .paligraph 导出与再导入
 node scripts/qa-assets.mjs  # Obsidian 附件导入与图片 lightbox
 node scripts/qa-pdf.mjs     # 中文 PDF 导出

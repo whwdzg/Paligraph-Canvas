@@ -193,17 +193,37 @@ export function NoteSidebar({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [folderMenu, menuNoteId]);
 
+  const showNoteMenu = (note: Note, left: number, top: number): void => {
+    const width = 214;
+    const height = 360;
+    setMenuPosition({
+      left: Math.min(window.innerWidth - width - 8, Math.max(8, left)),
+      top: Math.min(window.innerHeight - height - 8, Math.max(8, top)),
+    });
+    setFolderMenu(null);
+    setMenuNoteId(note.id);
+  };
+
   const openNoteMenu = (event: MouseEvent<HTMLButtonElement>, note: Note): void => {
     event.stopPropagation();
     const rect = event.currentTarget.getBoundingClientRect();
-    const width = 214;
+    showNoteMenu(
+      note,
+      rect.right - 214,
+      rect.bottom + 360 > window.innerHeight ? window.innerHeight - 360 - 8 : rect.bottom + 4,
+    );
+  };
+
+  const openNoteMenuAtPointer = (event: MouseEvent<HTMLElement>, note: Note): void => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (selectionMode) return;
     const height = 360;
-    const left = Math.min(window.innerWidth - width - 8, Math.max(8, rect.right - width));
-    const top = rect.bottom + height > window.innerHeight
-      ? Math.max(8, window.innerHeight - height - 8)
-      : rect.bottom + 4;
-    setMenuPosition({ left, top });
-    setMenuNoteId((current) => (current === note.id ? null : note.id));
+    showNoteMenu(
+      note,
+      event.clientX,
+      event.clientY + height > window.innerHeight ? event.clientY - height - 8 : event.clientY,
+    );
   };
 
   const openFolderMenu = (event: MouseEvent<HTMLButtonElement>, folder: FolderNode): void => {
@@ -215,6 +235,7 @@ export function NoteSidebar({
     const top = rect.bottom + height > window.innerHeight
       ? Math.max(8, rect.top - height - 4)
       : rect.bottom + 4;
+    setMenuNoteId(null);
     setFolderMenu((current) => (current?.id === folder.id ? null : { id: folder.id, left, top }));
   };
 
@@ -442,6 +463,7 @@ export function NoteSidebar({
                     if (selectionMode) onToggleSelected(note.id);
                     else onSelect(note.id);
                   }}
+                  onContextMenu={(event) => openNoteMenuAtPointer(event, note)}
                   aria-current={!selectionMode && note.id === activeId ? 'page' : undefined}
                   aria-pressed={selectionMode ? selected : undefined}
                 >
