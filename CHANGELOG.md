@@ -2,6 +2,15 @@
 
 All notable changes to Paligraph Canvas are documented here. The project follows a simple semantic-ish versioning scheme while the document schema stays at version 1.
 
+## [1.17.0] — 2026-11-25
+
+### Brush-aware colour mixing
+
+- Overlapping ink now mixes by brush: pen and pencil use `multiply`, crayon uses `darken`, brush uses `color-burn`, and highlighter uses `multiply`.
+- Live preview starts from the committed ink layer, so the previewed mixed colour matches the final stroke instead of jumping on release.
+- Added `inkBlendMode` unit coverage and `qa:color-mix`, which verifies red/blue overlap, blending, and live/final pixel consistency.
+- 70 unit tests pass.
+
 ## [1.16.0] — 2026-11-25
 
 ### Pressure strength and inference

@@ -504,6 +504,11 @@ export const DrawingSurface = forwardRef<DrawingSurfaceHandle, DrawingSurfacePro
       const ctx = prepareCanvas(liveCanvasRef.current, size.width, size.height, size.dpr);
       if (live) {
         ctx.save();
+        if (live.kind === 'draft' && inkCanvasRef.current) {
+          // Start from the committed ink so multiply/darken/color-burn previews
+          // mix with previous strokes instead of jumping colour on commit.
+          ctx.drawImage(inkCanvasRef.current, 0, 0, size.width, size.height);
+        }
         applyView(ctx, viewRef.current);
         if (live.kind === 'draft') {
           drawStroke(ctx, live.stroke);

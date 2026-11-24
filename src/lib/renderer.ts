@@ -677,6 +677,19 @@ function textureSpeckles(
   ctx.fill();
 }
 
+/**
+ * Each brush mixes overlapping pigments differently. Multiply keeps pen and
+ * graphite clean, darken preserves wax saturation and color-burn pools brush
+ * pigment where wet strokes cross. Erasers are handled separately.
+ */
+export function inkBlendMode(stroke: Pick<Stroke, 'tool' | 'variant'>): GlobalCompositeOperation {
+  if (stroke.tool === 'eraser') return 'destination-out';
+  if (stroke.tool === 'highlighter') return 'multiply';
+  if (stroke.variant === 'crayon') return 'darken';
+  if (stroke.variant === 'brush') return 'color-burn';
+  return 'multiply';
+}
+
 /** Paints one stroke. Pixel erasers are rendered with destination-out. */
 export function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke): void {
   const points = stroke.points;
@@ -689,7 +702,7 @@ export function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke): void 
   ctx.strokeStyle = stroke.color;
 
   if (stroke.tool === 'eraser') {
-    ctx.globalCompositeOperation = 'destination-out';
+    ctx.globalCompositeOperation = inkBlendMode(stroke);
     ctx.globalAlpha = 1;
     if (points.length === 1) {
       ctx.beginPath();
@@ -705,6 +718,8 @@ export function drawStroke(ctx: CanvasRenderingContext2D, stroke: Stroke): void 
     ctx.restore();
     return;
   }
+
+  ctx.globalCompositeOperation = inkBlendMode(stroke);
 
   if (stroke.tool === 'highlighter') {
     const opacity = clamp(stroke.opacity, 0.08, 0.55);

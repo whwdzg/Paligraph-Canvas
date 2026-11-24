@@ -3,7 +3,7 @@
 **灵感，落于笔尖。** A local-first notebook for ink, Markdown and the ideas in between.
 
 [![Deploy to GitHub Pages](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml/badge.svg)](https://github.com/whwdzg/Paligraph-Canvas/actions/workflows/deploy.yml)
-![Version](https://img.shields.io/badge/version-1.16.0-2b7fff)
+![Version](https://img.shields.io/badge/version-1.17.0-2b7fff)
 ![License](https://img.shields.io/badge/license-GPL--3.0--or--later-4c1)
 
 Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布、一套接近 Apple Notes 的悬浮工具栏、Fluent Design Sun Valley 的材质，以及可选的液态玻璃（liquid glass）质感。它把笔迹数据和 Markdown 都留在这台设备上，并可以在需要时导出为 PDF 或 Markdown。
@@ -35,7 +35,11 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 
 - 无限画布，世界坐标与视口缩放分离；平移或缩放时不会破坏绘制精度。
 - 钢笔、铅笔、蜡笔、毛笔四种笔触，压感会改变线条粗细。
+- **颜色混色**：不同颜色重叠时按笔刷混色——钢笔/铅笔使用 multiply，蜡笔使用 darken，毛笔使用 color-burn，荧光笔使用 multiply。实时预览从已提交墨迹开始合成，落笔颜色与抬笔后一致。
 - 笔触渲染细节：压感双端平滑、两端自然收锋；钢笔带柔边和湿润墨芯，铅笔使用短石墨颗粒和纸纹点，蜡笔使用宽蜡带与碎蜡，毛笔使用纵向鬃毛、浅色高光和干笔缺口。
+- 四种笔刷的红蓝交叉混色效果：
+
+![钢笔、铅笔、蜡笔、毛笔的颜色混色](docs/color-mix.png)
 - 画笔选项中的预览使用与画布相同的 Canvas 渲染器，直接展示当前颜色、粗细和纹理。
 - 荧光笔支持自由绘制与**直线**两种模式，颜色、宽度独立设置。
 - **图形纠正**：画完直线、矩形、正方形、正圆、椭圆、三角形、正三角形、菱形、五角星、勾或叉后按住笔尖停留，松手时自动吸附为干净图形。
@@ -207,7 +211,7 @@ Paligraph Canvas 是一个基于 Web 的笔记绘图软件：一张无限画布�
 npm install
 npm run dev        # http://localhost:4173
 npm run typecheck  # TypeScript
-npm test           # Vitest · 67 tests
+npm test           # Vitest · 70 tests
 npm run build      # 生产构建到 dist/
 npm run preview    # 预览构建，端口 4173
 ```
@@ -428,7 +432,7 @@ npm test
 npm run build
 ```
 
-当前验证结果：**67 个单元测试通过**，TypeScript 严格模式无错误，生产构建成功。
+当前验证结果：**70 个单元测试通过**，TypeScript 严格模式无错误，生产构建成功。
 
 浏览器 QA 需要先运行 `npm run preview`，并使用本地 Edge/Chrome：
 
@@ -453,6 +457,7 @@ npm run qa:backup       # 超过 100 笔的备份提醒与可编辑文件导出
 npm run qa:images       # 插入图片、选中、旋转、复制、删除、撤销
 npm run qa:image-resize # 图片角点等比缩放与撤销
 npm run qa:pressure    # 压感强度、压感算法与鼠标慢写/快写差异
+npm run qa:color-mix   # 笔刷混色、重叠颜色与实时/最终像素一致性
 npm run qa:export       # PNG / SVG / .paligraph 导出与再导入
 node scripts/qa-assets.mjs  # Obsidian 附件导入与图片 lightbox
 node scripts/qa-pdf.mjs     # 中文 PDF 导出
